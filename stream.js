@@ -2,7 +2,7 @@
 // hedgehog (with headset) plays a rotation of original mini games, with chat,
 // a webcam box and the submission countdown pinned at the top.
 //
-// Uses globals from index.html: busy, free, still, FLAGS, bossPending, CONFIG, on, havenName.
+// Uses globals from index.html: busy, free, still, FLAGS, bossPending, streamQueued, CONFIG, on, havenName.
 (() => {
   const W = 320, H = 180;
   const PAL = {
@@ -962,18 +962,18 @@
   })(preview ? 1500 : 90000);
 
   // secret: typing "daven" anywhere starts a stream now (even if stream breaks are switched off)
-  let typed = "", queued = false;
+  let typed = "";
   document.addEventListener("keydown", async e => {
     if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
     const typingInField = e.target instanceof Element && e.target.closest("input, textarea, select");
     if (typingInField || !document.getElementById("setup").hidden) return;
     typed = (typed + e.key.toLowerCase()).slice(-5);
-    if (typed !== "daven" || active || queued || bossPending || still()) return;
+    if (typed !== "daven" || active || streamQueued || bossPending || still()) return;
     typed = "";
-    queued = true;
-    // let whatever's on screen (boat ride, food attack...) finish first
-    for (let waited = 0; busy && waited < 20000; waited += 250) await sleep(250);
-    queued = false;
+    // let whatever's on screen (boat ride, food attack...) finish; nothing new starts meanwhile
+    streamQueued = true;
+    for (let waited = 0; busy && waited < 30000; waited += 250) await sleep(250);
+    streamQueued = false;
     if (!busy && !active && !bossPending) await session(3, 27000);
   });
 })();

@@ -1528,7 +1528,9 @@
   let busy = false;
   // set when the boss fight is due; stops new flips / voyages / attacks starting
   let bossPending = false;
-  const free = () => !busy && !bossPending;
+  // set by stream.js while a typed "daven" waits its turn, so nothing new jumps the queue
+  let streamQueued = false;
+  const free = () => !busy && !bossPending && !streamQueued;
 
   // backflip built from a real jump arc: crouch, parabola + spin, squash on landing
   function flip({ duration = 1300, height = 115, turns = 1 } = {}) {

@@ -48,6 +48,8 @@ Add flags to the URL to skip the setup screen and trigger things right away. Sep
 
 Example: `index.html#stream,hype`
 
+**Secret:** type `daven` anywhere on the countdown screen to start a gaming stream straight away, even when stream breaks are switched off.
+
 ## Files
 
 - `index.html`: the page, styles, countdown, setup screen and most animations

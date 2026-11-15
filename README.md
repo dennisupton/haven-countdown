@@ -43,6 +43,7 @@ Add flags to the URL to skip the setup screen and trigger things right away. Sep
 | `#events` | mini events, back to back |
 | `#tips` | tip signs |
 | `#food` | food attack |
+| `#credit` | the hedgehog's credit bubble |
 | `#hype` | clap meter driven by a fake noisy crowd (no mic needed) |
 
 Example: `index.html#stream,hype`

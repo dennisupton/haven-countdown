@@ -762,6 +762,16 @@
     filter: hue-rotate(-18deg) saturate(1.2) drop-shadow(0 6px 10px rgba(120, 50, 10, .25));
   }
 
+  .mini-bubble.right {
+    left: auto;
+    right: 0;
+    width: max-content;
+    max-width: min(300px, 70vw);
+    white-space: normal;
+    text-align: center;
+    transform-origin: 85% 100%;
+  }
+
   .mini-bubble {
     position: absolute;
     bottom: 100%;
@@ -1165,6 +1175,8 @@
     margin-top: 20px;
   }
 
+  .setup-credit { margin: 18px 0 0; font-size: 14px; opacity: .7; }
+
   .setup-reset {
     background: none;
     border: 0;
@@ -1312,6 +1324,7 @@
       <button type="button" class="setup-reset" id="setup-reset">reset to defaults</button>
       <button type="submit" class="setup-go">start the countdown</button>
     </div>
+    <p class="setup-credit">made by denis at hack club oxford</p>
   </form>
   </div>
 </div>
@@ -2097,18 +2110,20 @@
       <circle cx="92" cy="50" r="4" fill="#f0907a" opacity=".7"/>
     </svg>`;
 
-  function speech(parent, text) {
+  // `right` pins the bubble to the speaker's right edge so long lines stay on-screen
+  function speech(parent, text, { duration = 1800, right = false } = {}) {
     const b = document.createElement("div");
-    b.className = "mini-bubble";
+    b.className = right ? "mini-bubble right" : "mini-bubble";
     b.textContent = text;
     parent.appendChild(b);
+    const shift = right ? "translate(0, 0)" : "translate(-50%, 0)";
     return b.animate([
-      { transform: "translate(-50%, 0) scale(0)" },
-      { transform: "translate(-50%, 0) scale(1.15)", offset: .12 },
-      { transform: "translate(-50%, 0) scale(1)", offset: .2 },
-      { transform: "translate(-50%, 0) scale(1)", offset: .85 },
-      { transform: "translate(-50%, 0) scale(0)" },
-    ], { duration: 1800, easing: "ease-out", fill: "forwards" }).finished.then(() => b.remove());
+      { transform: `${shift} scale(0)` },
+      { transform: `${shift} scale(1.15)`, offset: .12 },
+      { transform: `${shift} scale(1)`, offset: .2 },
+      { transform: `${shift} scale(1)`, offset: .85 },
+      { transform: `${shift} scale(0)` },
+    ], { duration, easing: "ease-out", fill: "forwards" }).finished.then(() => b.remove());
   }
 
   async function friendSaysHi() {
@@ -2256,6 +2271,20 @@
     }));
     leaves.forEach(leaf => leaf.remove());
   }
+
+  // every few minutes the hedgehog credits the maker
+  (function creditLoop(delay) {
+    setTimeout(async () => {
+      // he's busy (sailing, fighting...)? try again shortly instead of skipping a whole round
+      if (still() || !free() || hog.classList.contains("away")) return creditLoop(10000);
+      busy = true;
+      hogImg.animate([{ translate: "0 0" }, { translate: "0 -14%" }, { translate: "0 0" }],
+        { duration: 450, easing: "ease-out" });
+      await speech(hog, "credit to denis @ hack club oxford!", { duration: 4500, right: true });
+      busy = false;
+      creditLoop(150000 + Math.random() * 90000);
+    }, delay);
+  })(FLAGS.has("credit") ? 1500 : 20000);
 
   const EVENTS = [friendSaysHi, squirrelHeist, leavesSpell];
   let lastEvent = -1;

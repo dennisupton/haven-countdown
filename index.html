@@ -1,0 +1,2480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haven Countdown</title>
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Darumadrop+One&family=Jua&display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: "Jua Extras";
+    src: url(assets/jua-extras.woff2) format("woff2");
+    font-display: swap;
+  }
+
+  :root {
+    --haven-green: #b8c220;
+    --haven-green-deep: #97a01a;
+    --haven-butter: #ffe382;
+    --haven-yellow: #ffd059;
+    --haven-orange-mid: #fc8616;
+    --haven-orange-bright: #fa681b;
+    --haven-orange-deep: #ed5615;
+    --haven-brown-dark: #b8774a;
+    --haven-brown-light: #dda47d;
+    --alert-red: #e8262b;
+    --alert-red-deep: #a8101a;
+    --font-body: "Jua Extras", "Jua", ui-rounded, system-ui, sans-serif;
+    --font-display: "Darumadrop One", "Jua Extras", "Jua", ui-rounded, system-ui, sans-serif;
+    /* scale everything by whichever viewport side is tighter */
+    --u: min(1vw, 1.2vh);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: var(--haven-green);
+    color: var(--haven-orange-deep);
+    font-family: var(--font-body);
+  }
+
+  .scene {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+  }
+
+  .bg {
+    position: absolute;
+    inset: -4%;
+    background: url(assets/hero-bg.webp) center / cover no-repeat;
+    animation: drift 24s ease-in-out infinite alternate;
+  }
+
+  .glow {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 60% 65%, rgba(255, 240, 120, .45), transparent 55%);
+    animation: breathe 6s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .foreground {
+    position: absolute;
+    left: 50%;
+    bottom: -2vw;
+    width: max(110vw, 900px);
+    transform: translate(-50%, 42%);
+    pointer-events: none;
+  }
+
+  .hog {
+    position: absolute;
+    bottom: 0;
+    right: 6vw;
+    width: clamp(90px, 14vw, 200px);
+    transform-origin: 50% 60%;
+    transition: translate .5s cubic-bezier(.5, -.4, .6, 1);
+  }
+
+  /* hops down out of the corner while he's off sailing */
+  .hog.away { translate: 0 130%; }
+
+  /* hedgehog sails across in a boat while the ship link is up */
+  .voyage {
+    position: fixed;
+    z-index: 3;
+    left: 0;
+    bottom: 0;
+    width: clamp(120px, 12vw, 190px);
+    translate: -110% 0;
+    pointer-events: none;
+  }
+
+  .voyage.go { animation: sail 12s linear forwards; }
+
+  .boat {
+    position: relative;
+    aspect-ratio: 200 / 170;
+    transform-origin: 50% 80%;
+    animation: rock 2.2s ease-in-out infinite;
+    filter: drop-shadow(0 8px 12px rgba(120, 50, 10, .3));
+  }
+
+  .boat > * { position: absolute; }
+  .boat svg { inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+  .rider {
+    left: 21%;
+    bottom: 27%;
+    width: 50%;
+    animation: peek 1.6s ease-in-out infinite;
+    transform-origin: bottom center;
+  }
+
+  .bubble {
+    left: 100%;
+    bottom: 70%;
+    padding: 6px 16px 8px;
+    background: #fff;
+    color: var(--haven-orange-deep);
+    border: 3px solid var(--haven-orange-mid);
+    border-radius: 20px 22px 20px 18px;
+    font-family: var(--font-display);
+    font-size: clamp(18px, 2vw, 28px);
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 5px 0 var(--haven-orange-mid);
+    transform-origin: 0 100%;
+    scale: 0;
+  }
+
+  .bubble::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 100%;
+    margin-top: 2px;
+    border: 9px solid transparent;
+    border-top-color: var(--haven-orange-mid);
+    border-bottom: 0;
+  }
+
+  .voyage.go .bubble { animation: bubble 12s ease-in-out forwards; }
+
+  /* pizza attack layer (slices + impact stars), built by JS */
+  .pizza-attack {
+    position: fixed;
+    inset: 0;
+    z-index: 3;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .pizza-attack .slice {
+    position: absolute;
+    overflow: visible;
+    filter: drop-shadow(0 6px 8px rgba(120, 50, 10, .3));
+  }
+
+  .pizza-attack .pow {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    margin: -40px 0 0 -40px;
+    overflow: visible;
+  }
+
+  .hedgehog {
+    display: block;
+    width: 100%;
+    transform-origin: bottom center;
+    animation: peek 5s ease-in-out infinite;
+    filter: drop-shadow(0 6px 10px rgba(120, 50, 10, .25));
+  }
+
+  .leaf {
+    position: absolute;
+    top: -40px;
+    width: var(--s);
+    height: calc(var(--s) * .62);
+    background: var(--c);
+    border-radius: 0 100% 0 100%;
+    opacity: .9;
+    animation:
+      fall var(--d) linear var(--delay) infinite,
+      sway calc(var(--d) / 3) ease-in-out var(--delay) infinite alternate;
+  }
+
+  .mote {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff6c4;
+    box-shadow: 0 0 10px 3px rgba(255, 240, 150, .8);
+    animation: twinkle var(--d) ease-in-out var(--delay) infinite;
+  }
+
+  main {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(10px, calc(var(--u) * 2.2), 26px);
+    padding: 16px;
+    padding-bottom: 8vh;
+    text-align: center;
+  }
+
+  .logo {
+    filter: drop-shadow(0 6px 0 var(--haven-orange-deep)) drop-shadow(0 12px 20px rgba(150, 60, 0, .35));
+    animation: float 4.5s ease-in-out infinite;
+  }
+
+  /* Haven logo, plus the city lettered beside it (like haven.hackclub.com/<city>) */
+  .brand {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .brand img { display: block; width: clamp(160px, calc(var(--u) * 26), 360px); }
+  .brand.lettered img { width: clamp(150px, calc(var(--u) * 24), 330px); }
+
+  .brand-city {
+    margin: 0 0 0 -.2em;
+    font-family: var(--font-display);
+    font-size: clamp(40px, calc(var(--u) * 7), 110px);
+    line-height: .82;
+    letter-spacing: -.05em;
+    color: #fff;
+    white-space: nowrap;
+    translate: 0 25%;
+    rotate: -4deg;
+  }
+
+  .brand:not(.lettered) .brand-city { display: none; }
+
+  .countdown {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: clamp(8px, calc(var(--u) * 1.6), 20px);
+  }
+
+  .timer {
+    display: flex;
+    gap: clamp(8px, calc(var(--u) * 1.8), 22px);
+    align-items: flex-start;
+  }
+
+  .unit {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    animation: float 4.5s ease-in-out infinite;
+    animation-delay: calc(var(--i) * -.6s);
+  }
+
+  .card {
+    min-width: clamp(70px, calc(var(--u) * 13), 150px);
+    padding: clamp(8px, calc(var(--u) * 1.4), 16px) clamp(10px, calc(var(--u) * 1.8), 22px) clamp(4px, calc(var(--u) * .8), 10px);
+    background: var(--haven-butter);
+    border: 5px solid #fff;
+    border-radius: 32px 28px 36px 26px / 28px 34px 26px 32px;
+    box-shadow: 0 8px 0 var(--haven-orange-mid), 0 18px 30px rgba(150, 60, 0, .3);
+    font-family: var(--font-display);
+    font-size: clamp(42px, calc(var(--u) * 9), 108px);
+    line-height: 1;
+    color: var(--haven-orange-deep);
+    font-variant-numeric: tabular-nums;
+    transform: rotate(var(--r));
+  }
+
+  .card .num { display: inline-block; }
+  .card .num.tick { animation: pop .35s ease-out; }
+
+  .label {
+    font-size: clamp(13px, calc(var(--u) * 1.6), 20px);
+    color: #fff;
+    letter-spacing: .04em;
+    text-shadow: 0 2px 0 var(--haven-orange-deep);
+  }
+
+  .sep {
+    font-family: var(--font-display);
+    font-size: clamp(32px, calc(var(--u) * 7), 86px);
+    color: #fff;
+    text-shadow: 0 4px 0 var(--haven-orange-deep);
+    padding-top: clamp(10px, calc(var(--u) * 1.8), 22px);
+    animation: blink 1s steps(1) infinite;
+  }
+
+  .msg {
+    margin: 0;
+    padding: 10px 26px;
+    background: var(--haven-orange-bright);
+    color: #fff;
+    border: 4px solid #fff;
+    border-radius: 999px;
+    font-size: clamp(18px, calc(var(--u) * 3), 34px);
+    box-shadow: 0 6px 0 var(--haven-orange-deep), 0 14px 24px rgba(150, 60, 0, .3);
+    animation: float 5s ease-in-out -1.2s infinite, wiggle 7s ease-in-out infinite;
+  }
+
+  .countdown.done .msg { background: var(--haven-green-deep); }
+
+  .msg-row {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* ship link, only shown in the final hour before submission.
+     hangs off the right so the pill stays page-centred */
+  .ship {
+    position: absolute;
+    left: calc(100% + clamp(8px, calc(var(--u) * 1.6), 18px));
+    white-space: nowrap;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 22px;
+    background: #fff;
+    color: var(--alert-red);
+    border: 4px solid var(--haven-butter);
+    border-radius: 999px;
+    font-size: clamp(16px, calc(var(--u) * 2.4), 28px);
+    text-decoration: none;
+    box-shadow: 0 6px 0 var(--alert-red), 0 14px 24px rgba(150, 20, 0, .3);
+    animation: pop-in .5s cubic-bezier(.3, 1.6, .5, 1) both, nudge 2.6s ease-in-out .5s infinite;
+    transition: translate .15s ease;
+  }
+
+  .ship:hover { translate: 0 -4px; }
+  .ship:active { translate: 0 2px; }
+  .ship svg { width: 1.1em; height: 1.1em; }
+  .ship b { font-weight: 400; color: var(--haven-orange-deep); }
+
+  body[data-ship="1"] .ship { display: inline-flex; }
+
+  /* soft red glow around the screen edge, last 30 min */
+  .edge-glow {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    box-shadow:
+      inset 0 0 0 4px rgba(232, 38, 43, .55),
+      inset 0 0 70px 16px rgba(232, 38, 43, .5);
+  }
+
+  body[data-alert="2"] .edge-glow { animation: edge-pulse 2.4s ease-in-out infinite; }
+  body[data-alert="3"] .edge-glow,
+  body[data-alert="4"] .edge-glow {
+    box-shadow:
+      inset 0 0 0 6px rgba(232, 38, 43, .7),
+      inset 0 0 110px 26px rgba(232, 38, 43, .6);
+  }
+  body[data-alert="3"] .edge-glow { animation: edge-pulse 1.4s ease-in-out infinite; }
+  body[data-alert="4"] .edge-glow { animation: edge-pulse .7s ease-in-out infinite; }
+
+  /* boss fight layer, built by JS */
+  .boss-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .boss {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -10%;
+    margin-inline: auto;
+    width: min(52vh, 46vw);
+  }
+
+  .boss-body {
+    display: block;
+    width: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 14px 24px rgba(120, 30, 0, .45));
+  }
+
+  .boss .face-hurt { display: none; }
+  .boss.hurt .face-normal { display: none; }
+  .boss.hurt .face-hurt { display: inline; }
+
+  .boss-hp {
+    position: absolute;
+    top: 14px;
+    left: 50%;
+    width: min(620px, calc(100vw - 32px));
+    translate: -50% 0;
+    text-align: center;
+  }
+
+  .boss-name {
+    display: block;
+    margin-bottom: 4px;
+    font-family: var(--font-display);
+    font-size: clamp(24px, 3vw, 40px);
+    color: #fff;
+    text-shadow: 0 3px 0 var(--alert-red-deep);
+  }
+
+  .boss-hp .bar {
+    height: clamp(18px, 2.4vh, 28px);
+    background: rgba(122, 46, 14, .45);
+    border: 4px solid #fff;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: 0 5px 0 var(--alert-red-deep), 0 10px 20px rgba(150, 20, 0, .35);
+  }
+
+  .boss-hp i {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: linear-gradient(#ff6b5e, var(--alert-red));
+    border-radius: 999px;
+    transition: width .6s cubic-bezier(.3, 1.4, .5, 1);
+  }
+
+  .boss-banner {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .boss-banner h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(52px, 11vw, 160px);
+    line-height: .95;
+    color: #fff;
+    text-shadow: 0 6px 0 var(--alert-red), 0 14px 30px rgba(150, 20, 0, .5);
+  }
+
+  .boss-banner p {
+    margin: 10px 0 0;
+    font-size: clamp(18px, 3vw, 38px);
+    color: #fff;
+    text-shadow: 0 3px 0 var(--haven-orange-deep);
+  }
+
+  .boss-proj, .boss-rocket { position: absolute; }
+  .boss-proj { width: 44px; height: 44px; margin: -22px 0 0 -22px; }
+  .boss-rocket { width: 90px; height: 40px; margin: -20px 0 0 -45px; }
+  .boss-proj svg, .boss-rocket svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .boss-rocket .flame { transform-origin: -22px 0; animation: flame .12s linear infinite alternate; }
+
+  .boss-bubble {
+    position: absolute;
+    padding: 6px 16px 8px;
+    background: #fff;
+    color: var(--haven-orange-deep);
+    border: 3px solid var(--haven-orange-mid);
+    border-radius: 20px;
+    font-family: var(--font-display);
+    font-size: clamp(20px, 2.4vw, 32px);
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 5px 0 var(--haven-orange-mid);
+  }
+
+  .boss-dmg {
+    position: absolute;
+    font-family: var(--font-display);
+    font-size: clamp(32px, 4vw, 56px);
+    color: #fff;
+    text-shadow: 0 4px 0 var(--alert-red), 0 8px 16px rgba(150, 20, 0, .4);
+  }
+
+  .boss-flash {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    opacity: 0;
+  }
+
+  .boss-confetti {
+    position: absolute;
+    width: 12px;
+    height: 7px;
+    margin: -3px 0 0 -6px;
+    border-radius: 0 100% 0 100%;
+  }
+
+  @keyframes flame {
+    from { transform: scaleX(.7); }
+    to { transform: scaleX(1.3); }
+  }
+
+  /* alert levels: submission = 1..4 (60/30/10/1 min) */
+  [data-level="1"] .card { animation: flash-soft 2.4s ease-in-out infinite; }
+  [data-level="1"] .msg { animation: float 5s ease-in-out -1.2s infinite, msg-soft 2.4s ease-in-out infinite; }
+
+  #submission[data-level="2"] .card { animation: flash-card 1.4s ease-in-out infinite; }
+  #submission[data-level="3"] .card { animation: flash-card .9s ease-in-out infinite; }
+  #submission[data-level="4"] .card { animation: flash-card .5s ease-in-out infinite; }
+
+  #submission[data-level="2"] .msg { animation: float 5s ease-in-out -1.2s infinite, flash-msg 1.4s ease-in-out infinite; }
+  #submission[data-level="3"] .msg { animation: float 5s ease-in-out -1.2s infinite, flash-msg .9s ease-in-out infinite; }
+  #submission[data-level="4"] .msg { animation: flash-msg .5s ease-in-out infinite; }
+
+  #submission[data-level="4"] .timer { animation: shake .25s linear infinite; }
+
+  #submission[data-level="2"] :is(.sep, .label),
+  #submission[data-level="3"] :is(.sep, .label),
+  #submission[data-level="4"] :is(.sep, .label) { text-shadow: 0 3px 0 var(--alert-red-deep); }
+
+  @keyframes flash-soft {
+    0%, 100% {
+      background: var(--haven-butter);
+      color: var(--haven-orange-deep);
+    }
+    50% {
+      background: #ffd2bf;
+      color: var(--alert-red);
+      box-shadow: 0 6px 0 #f0704f, 0 12px 24px rgba(232, 38, 43, .3);
+    }
+  }
+
+  @keyframes msg-soft {
+    50% { background: #f0503a; }
+  }
+
+  @keyframes edge-pulse {
+    0%, 100% { opacity: .35; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes shake {
+    0%, 100% { translate: 0 0; }
+    25% { translate: -3px 1px; }
+    75% { translate: 3px -1px; }
+  }
+
+  @keyframes pop-in {
+    from { scale: 0; }
+    to { scale: 1; }
+  }
+
+  @keyframes nudge {
+    0%, 70%, 100% { rotate: 0deg; }
+    78% { rotate: -4deg; }
+    86% { rotate: 4deg; }
+  }
+
+  @keyframes flash-card {
+    0%, 100% {
+      background: var(--haven-butter);
+      color: var(--alert-red);
+      box-shadow: 0 6px 0 var(--alert-red), 0 14px 26px rgba(150, 20, 0, .3);
+    }
+    50% {
+      background: var(--alert-red);
+      color: #fff;
+      box-shadow: 0 6px 0 var(--alert-red-deep), 0 0 34px 8px rgba(232, 38, 43, .65);
+    }
+  }
+
+  @keyframes flash-msg {
+    0%, 100% { background: var(--alert-red); box-shadow: 0 6px 0 var(--alert-red-deep), 0 14px 24px rgba(150, 20, 0, .3); }
+    50% { background: var(--alert-red-deep); box-shadow: 0 6px 0 #6e0810, 0 0 30px 6px rgba(232, 38, 43, .6); }
+  }
+
+  @keyframes float {
+    0%, 100% { translate: 0 0; }
+    50% { translate: 0 -12px; }
+  }
+
+  @keyframes wiggle {
+    0%, 90%, 100% { rotate: 0deg; }
+    93% { rotate: -2deg; }
+    96% { rotate: 2deg; }
+  }
+
+  @keyframes pop {
+    0% { scale: 1; }
+    40% { scale: 1.12; }
+    100% { scale: 1; }
+  }
+
+  @keyframes blink {
+    50% { opacity: .35; }
+  }
+
+  @keyframes drift {
+    from { transform: scale(1.02) translate(-1%, 0); }
+    to { transform: scale(1.06) translate(1%, -1%); }
+  }
+
+  @keyframes breathe {
+    0%, 100% { opacity: .6; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes peek {
+    0%, 100% { transform: translateY(8%) rotate(-3deg); }
+    50% { transform: translateY(0) rotate(3deg); }
+  }
+
+  @keyframes sail {
+    from { translate: -110% 0; }
+    to { translate: calc(100vw + 10%) 0; }
+  }
+
+  @keyframes rock {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50% { transform: translateY(-6px) rotate(4deg); }
+  }
+
+  @keyframes bubble {
+    0%, 10% { scale: 0; rotate: -8deg; }
+    14% { scale: 1.15; rotate: 4deg; }
+    17% { scale: 1; rotate: 0deg; }
+    40% { scale: 1; rotate: -3deg; }
+    44% { scale: 1.1; rotate: 3deg; }
+    48% { scale: 1; rotate: 0deg; }
+    82% { scale: 1; }
+    88%, 100% { scale: 0; }
+  }
+
+  @keyframes steam {
+    0% { opacity: 0; transform: translateY(6px); }
+    40% { opacity: .9; }
+    100% { opacity: 0; transform: translateY(-14px); }
+  }
+
+  @keyframes fall {
+    to { top: 110vh; rotate: 540deg; }
+  }
+
+  @keyframes sway {
+    from { translate: -30px 0; }
+    to { translate: 30px 0; }
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0; transform: translateY(0) scale(.6); }
+    50% { opacity: 1; transform: translateY(-30px) scale(1); }
+  }
+
+  /* ---------- hedgehog moods ---------- */
+  .hog-zzz { position: absolute; top: 4%; right: 8%; }
+
+  .hog-zzz span {
+    position: absolute;
+    font-family: var(--font-display);
+    font-size: clamp(18px, 2vw, 30px);
+    color: #fff;
+    text-shadow: 0 2px 0 var(--haven-brown-dark);
+  }
+
+  .hog-sweat, .hog-alarm, .hog-hat, .coffee { display: none; }
+  .hog-sweat { position: absolute; inset: 0; }
+
+  .hog-sweat i {
+    position: absolute;
+    top: 22%;
+    width: 10px;
+    height: 14px;
+    background: #8fd8ff;
+    border: 2px solid #fff;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: sweat .9s ease-out infinite;
+  }
+
+  .hog-sweat i:nth-child(1) { left: 12%; --dx: -28px; }
+  .hog-sweat i:nth-child(2) { left: 78%; --dx: 28px; animation-delay: .3s; }
+  .hog-sweat i:nth-child(3) { left: 22%; top: 12%; --dx: -36px; animation-delay: .6s; }
+
+  .hog-alarm {
+    position: absolute;
+    top: -20%;
+    right: 2%;
+    font-family: var(--font-display);
+    font-size: clamp(28px, 3vw, 46px);
+    color: var(--alert-red);
+    text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
+    animation: alarm .4s ease-in-out infinite alternate;
+  }
+
+  .hog-hat {
+    position: absolute;
+    top: -26%;
+    left: 34%;
+    width: 30%;
+    rotate: 14deg;
+    overflow: visible;
+  }
+
+  .coffee {
+    position: absolute;
+    bottom: 1vh;
+    right: calc(6vw + clamp(90px, 14vw, 200px) - 6px);
+    width: clamp(36px, 4vw, 58px);
+    filter: drop-shadow(0 6px 8px rgba(120, 50, 10, .3));
+  }
+
+  .coffee svg { display: block; width: 100%; overflow: visible; }
+
+  .coffee .steam {
+    fill: none;
+    stroke: #fff;
+    stroke-width: 3;
+    stroke-linecap: round;
+    opacity: 0;
+    animation: steam 2.4s ease-in-out infinite;
+  }
+
+  .coffee .steam:nth-of-type(2) { animation-delay: .8s; }
+  .coffee .steam:nth-of-type(3) { animation-delay: 1.6s; }
+
+  body[data-mood="sleepy"] .coffee { display: block; }
+  body[data-mood="sleepy"] .hedgehog {
+    animation-duration: 9s;
+    filter: drop-shadow(0 6px 10px rgba(120, 50, 10, .25)) saturate(.85) brightness(.95);
+  }
+
+  body[data-mood="panic"] .hog-sweat,
+  body[data-mood="panic"] .hog-alarm,
+  .hog.shocked .hog-alarm { display: block; }
+  body[data-mood="panic"] .hedgehog { animation: peek 1.6s ease-in-out infinite, jitter .1s linear infinite; }
+
+  body[data-mood="party"] .hog-hat { display: block; }
+
+  /* ---------- mini events ---------- */
+  .friend {
+    position: absolute;
+    bottom: 0;
+    left: calc(-1 * clamp(70px, 9vw, 120px));
+    width: clamp(70px, 9vw, 120px);
+  }
+
+  .friend img {
+    display: block;
+    width: 100%;
+    transform-origin: bottom center;
+    filter: hue-rotate(-18deg) saturate(1.2) drop-shadow(0 6px 10px rgba(120, 50, 10, .25));
+  }
+
+  .mini-bubble {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    margin-bottom: 6px;
+    padding: 5px 14px 7px;
+    background: #fff;
+    color: var(--haven-orange-deep);
+    border: 3px solid var(--haven-orange-mid);
+    border-radius: 18px;
+    font-family: var(--font-display);
+    font-size: clamp(16px, 1.8vw, 26px);
+    line-height: 1;
+    white-space: nowrap;
+    box-shadow: 0 4px 0 var(--haven-orange-mid);
+    transform-origin: 50% 100%;
+  }
+
+  .squirrel {
+    position: absolute;
+    left: 0;
+    bottom: 1.5vh;
+    width: clamp(70px, 8vw, 110px);
+    transform: translateX(-150%);
+  }
+
+  .squirrel svg {
+    display: block;
+    width: 100%;
+    overflow: visible;
+    transform-origin: bottom center;
+    filter: drop-shadow(0 6px 8px rgba(120, 50, 10, .3));
+  }
+
+  .heist-slice {
+    position: absolute;
+    overflow: visible;
+    filter: drop-shadow(0 6px 8px rgba(120, 50, 10, .3));
+  }
+
+  .spell-leaf { position: absolute; border-radius: 0 100% 0 100%; }
+
+  /* ---------- jam tip sign ---------- */
+  .tip-sign {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 4vw;
+    width: clamp(200px, 21vw, 300px);
+    margin-top: 64px;
+    padding: 30px 18px 16px;
+    background: repeating-linear-gradient(0deg, #dda47d 0 14px, #d39a70 14px 16px);
+    border: 4px solid var(--haven-brown-dark);
+    border-radius: 14px;
+    box-shadow: 0 0 0 4px #fff, 0 10px 0 var(--haven-brown-dark), 0 18px 28px rgba(120, 50, 10, .35);
+    color: #6b2f10;
+    text-align: center;
+    transform-origin: 50% -64px;
+    visibility: hidden;
+  }
+
+  .tip-sign::before, .tip-sign::after {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    width: 5px;
+    height: 72px;
+    background: var(--haven-brown-dark);
+    box-shadow: 0 0 0 2px #fff;
+  }
+
+  .tip-sign::before { left: 20%; }
+  .tip-sign::after { right: 20%; }
+
+  .tip-label {
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    translate: -50% 0;
+    padding: 3px 14px 5px;
+    background: var(--haven-butter);
+    border: 3px solid #fff;
+    border-radius: 999px;
+    color: var(--haven-orange-deep);
+    font-family: var(--font-display);
+    font-size: 18px;
+    white-space: nowrap;
+    box-shadow: 0 3px 0 var(--haven-orange-mid);
+  }
+
+  .tip-sign p {
+    margin: 0;
+    font-size: clamp(16px, 1.6vw, 22px);
+    line-height: 1.25;
+  }
+
+  /* ---------- clap meter ---------- */
+  .bg { filter: saturate(calc(1 + var(--hype, 0) * 1.3)) brightness(calc(1 + var(--hype, 0) * .35)); }
+
+  .hype-glow {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    opacity: var(--hype, 0);
+    box-shadow:
+      inset 0 0 0 6px rgba(255, 227, 130, .85),
+      inset 0 0 140px 36px rgba(255, 208, 89, .8);
+  }
+
+  .hype-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .hype-leaf {
+    position: absolute;
+    top: 0;
+    width: 24px;
+    height: 15px;
+    border-radius: 0 100% 0 100%;
+  }
+
+  .hype-pop {
+    position: absolute;
+    font-family: var(--font-display);
+    font-size: clamp(64px, 13vw, 190px);
+    line-height: 1;
+    white-space: nowrap;
+    color: #fff;
+    text-shadow: 0 6px 0 var(--haven-orange-deep), 0 0 40px rgba(255, 208, 89, .9);
+  }
+
+  .clap-toggle {
+    position: fixed;
+    z-index: 3;
+    left: 16px;
+    bottom: 16px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px 8px 12px;
+    background: #fff;
+    color: var(--haven-orange-deep);
+    border: 3px solid var(--haven-butter);
+    border-radius: 999px;
+    font: inherit;
+    font-size: 17px;
+    box-shadow: 0 5px 0 var(--haven-orange-mid);
+    cursor: pointer;
+    opacity: .85;
+    transition: translate .15s ease, opacity .15s ease;
+  }
+
+  .clap-toggle:hover { translate: 0 -3px; opacity: 1; }
+  .clap-toggle svg { width: 20px; height: 20px; }
+
+  .clap-meter {
+    --tube: min(34vh, 280px);
+    position: fixed;
+    z-index: 3;
+    left: 16px;
+    bottom: 16px;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+  }
+
+  body.clap-on .clap-meter { display: flex; }
+  body.clap-on .clap-toggle { display: none; }
+
+  .clap-title, .clap-meter .word {
+    font-family: var(--font-display);
+    color: #fff;
+    text-shadow: 0 3px 0 var(--haven-orange-deep);
+    white-space: nowrap;
+  }
+
+  .clap-title { font-size: 22px; }
+  .clap-meter .word { font-size: 18px; }
+
+  .clap-meter .tube {
+    position: relative;
+    width: 34px;
+    height: var(--tube);
+    background: rgba(122, 46, 14, .35);
+    border: 4px solid #fff;
+    border-radius: 999px;
+    overflow: hidden;
+    box-shadow: 0 5px 0 var(--haven-orange-mid);
+  }
+
+  .clap-meter .fill {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0;
+    background: linear-gradient(to top, #b8c220, #ffd059 45%, #fa681b 72%, #e8262b) bottom / 100% var(--tube);
+  }
+
+  .clap-meter .peak {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 4px;
+    margin-bottom: -2px;
+    background: #fff;
+  }
+
+  .clap-meter[data-tier="2"] .tube { box-shadow: 0 5px 0 var(--haven-orange-mid), 0 0 18px 4px rgba(250, 104, 27, .7); }
+  .clap-meter[data-tier="3"] .tube { box-shadow: 0 5px 0 var(--alert-red), 0 0 30px 10px rgba(255, 208, 89, .95); }
+  .clap-meter[data-tier="3"] .word { color: var(--haven-butter); animation: shake .2s linear infinite; }
+
+  @keyframes sweat {
+    0% { opacity: 0; transform: translate(0, 0) scale(.6); }
+    20% { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--dx), 30px) scale(1); }
+  }
+
+  @keyframes alarm {
+    from { transform: translateY(0) rotate(-6deg); }
+    to { transform: translateY(-6px) rotate(6deg) scale(1.1); }
+  }
+
+  @keyframes jitter {
+    0% { translate: -2px 0; }
+    50% { translate: 2px -1px; }
+    100% { translate: -1px 1px; }
+  }
+
+  /* ---------- start screen ---------- */
+  .setup {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    overflow-y: auto;
+    background: linear-gradient(rgba(120, 50, 10, .35), rgba(120, 50, 10, .55)), url(assets/hero-bg.webp) center / cover;
+  }
+
+  .setup[hidden] { display: none; }
+
+  .setup-card {
+    width: min(640px, 100%);
+    padding: clamp(18px, 3vw, 32px);
+    background: #fff8e4;
+    border: 5px solid #fff;
+    border-radius: 32px 28px 36px 26px / 28px 34px 26px 32px;
+    box-shadow: 0 10px 0 var(--haven-orange-mid), 0 24px 50px rgba(120, 40, 0, .4);
+    color: #6b2f10;
+    text-align: center;
+  }
+
+  .setup-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    width: min(640px, 100%);
+  }
+
+  .setup-logo {
+    filter: drop-shadow(0 5px 0 var(--haven-orange-deep)) drop-shadow(0 10px 18px rgba(120, 40, 0, .35));
+  }
+
+  .setup-logo img, .setup-logo.lettered img { width: clamp(140px, 26vw, 220px); }
+  .setup-logo .brand-city { font-size: clamp(34px, 6vw, 64px); }
+
+  .setup-where {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+    font-size: 17px;
+  }
+
+  .setup-where input {
+    width: min(320px, 100%);
+    margin: 0 auto;
+    padding: 8px 14px;
+    background: var(--haven-butter);
+    border: 4px solid #fff;
+    border-radius: 16px;
+    box-shadow: 0 5px 0 var(--haven-orange-mid);
+    color: var(--haven-orange-deep);
+    font-family: var(--font-display);
+    font-size: 28px;
+    text-align: center;
+  }
+
+  .setup-card h1 {
+    margin: 4px 0 16px;
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(32px, 6vw, 52px);
+    line-height: 1;
+    color: var(--haven-orange-deep);
+  }
+
+  .setup-times {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px 20px;
+  }
+
+  .setup-times label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 17px;
+  }
+
+  .setup-times input {
+    padding: 8px 14px;
+    background: var(--haven-butter);
+    border: 4px solid #fff;
+    border-radius: 16px;
+    box-shadow: 0 5px 0 var(--haven-orange-mid);
+    color: var(--haven-orange-deep);
+    font-family: var(--font-display);
+    font-size: 30px;
+    text-align: center;
+  }
+
+  .setup-times input:disabled { opacity: .45; }
+
+  .setup-note { margin: 12px 0 16px; font-size: 14px; opacity: .75; }
+
+  .setup-toggles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 8px 16px;
+    margin: 0;
+    padding: 16px;
+    border: 3px dashed var(--haven-brown-light);
+    border-radius: 20px;
+    text-align: left;
+  }
+
+  .setup-toggles legend {
+    padding: 0 8px;
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--haven-orange-deep);
+  }
+
+  .setup-toggles label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+
+  .setup-toggles input {
+    flex: none;
+    appearance: none;
+    position: relative;
+    width: 44px;
+    height: 26px;
+    margin: 0;
+    background: #e8cfa8;
+    border: 3px solid #fff;
+    border-radius: 999px;
+    box-shadow: 0 2px 0 var(--haven-brown-light);
+    cursor: pointer;
+    transition: background .15s ease;
+  }
+
+  .setup-toggles input::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: #fff;
+    border-radius: 50%;
+    transition: translate .15s ease;
+  }
+
+  .setup-toggles input:checked { background: var(--haven-orange-bright); box-shadow: 0 2px 0 var(--haven-orange-deep); }
+  .setup-toggles input:checked::before { translate: 18px 0; }
+  .setup-toggles input:focus-visible { outline: 3px solid var(--haven-teal, #2cbf90); outline-offset: 2px; }
+
+  .setup-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 12px 24px;
+    margin-top: 20px;
+  }
+
+  .setup-reset {
+    background: none;
+    border: 0;
+    color: #6b2f10;
+    font: inherit;
+    font-size: 15px;
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  .setup-go {
+    padding: 10px 30px 12px;
+    background: var(--haven-orange-bright);
+    color: #fff;
+    border: 4px solid #fff;
+    border-radius: 999px;
+    box-shadow: 0 6px 0 var(--haven-orange-deep);
+    font-family: var(--font-display);
+    font-size: clamp(22px, 3.4vw, 30px);
+    cursor: pointer;
+    transition: translate .15s ease;
+  }
+
+  .setup-go:hover { translate: 0 -3px; }
+  .setup-go:active { translate: 0 2px; }
+
+  .setup-gear {
+    position: fixed;
+    z-index: 7;
+    top: 12px;
+    right: 12px;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: rgba(255, 255, 255, .8);
+    color: var(--haven-orange-deep);
+    border: 3px solid var(--haven-butter);
+    border-radius: 50%;
+    cursor: pointer;
+    opacity: .25;
+    transition: opacity .2s ease, rotate .4s ease;
+  }
+
+  .setup-gear:hover, .setup-gear:focus-visible { opacity: 1; rotate: 60deg; }
+  .setup-gear svg { width: 22px; height: 22px; }
+  .no-clap .clap-toggle { display: none; }
+
+  @media (max-width: 520px) {
+    :root { --u: min(1.6vw, 1.3vh); }
+    .card { border-width: 4px; border-radius: 22px; }
+    .sep { display: none; }
+    .msg-row { flex-direction: column; gap: 12px; }
+    .ship { position: static; }
+    .brand img { width: clamp(120px, 24vh, 200px); }
+    .brand.lettered img { width: clamp(110px, 20vh, 170px); }
+    .brand-city { font-size: clamp(32px, 6vh, 52px); }
+    main { padding-bottom: 10vh; }
+    .tip-sign {
+      top: auto;
+      bottom: 12vh;
+      left: 50%;
+      width: min(70vw, 280px);
+      margin: 0 0 0 calc(min(70vw, 280px) / -2);
+      transform-origin: 50% 100%;
+    }
+    .tip-sign::before, .tip-sign::after { display: none; }
+    .clap-meter { --tube: 20vh; left: 10px; }
+    .clap-toggle { font-size: 15px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; }
+    #submission:is([data-level="2"], [data-level="3"], [data-level="4"]) .card { background: var(--alert-red); color: #fff; }
+    body:is([data-alert="2"], [data-alert="3"], [data-alert="4"]) .edge-glow { opacity: .8; }
+  }
+</style>
+</head>
+<body>
+<script>
+  // settings from the start screen, kept in this browser only
+  const DEFAULTS = {
+    location: "Oxford",
+    deadline: "21:00",
+    bossTime: "18:47",
+    features: { flips: true, moods: true, events: true, tips: true, food: true, ship: true, stream: true, alerts: true, boss: true, clap: true },
+  };
+  const CONFIG = (() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("haven-config") || "{}");
+      return { ...DEFAULTS, ...saved, features: { ...DEFAULTS.features, ...saved.features } };
+    } catch {
+      return structuredClone(DEFAULTS);
+    }
+  })();
+  const on = feature => CONFIG.features[feature] !== false;
+  // HH:MM today on this computer's clock
+  const todayAt = hhmm => {
+    const [h, m] = hhmm.split(":").map(Number);
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), h, m, 0).getTime();
+  };
+  if (!on("clap")) document.documentElement.classList.add("no-clap");
+
+  // Oxford has its own hand-lettered logo; any other haven gets the city written beside the Haven logo
+  function renderBrand(el, city) {
+    const name = city.trim();
+    const custom = name.toLowerCase() === "oxford";
+    el.classList.toggle("lettered", Boolean(name) && !custom);
+    const img = el.querySelector("img");
+    img.src = custom ? "assets/logo-oxford.webp" : "assets/logo.webp";
+    img.alt = name ? `Hack Club Haven ${name}` : "Hack Club Haven";
+    el.querySelector(".brand-city").textContent = name.toLowerCase();
+  }
+  const havenName = () => CONFIG.location.trim() ? `Haven ${CONFIG.location.trim()}` : "Haven";
+  document.title = `${havenName()} Countdown`;
+</script>
+
+<div class="setup" id="setup" hidden>
+  <div class="setup-inner">
+  <div class="brand setup-logo" id="setup-logo"><img src="assets/logo-oxford.webp" alt="Hack Club Haven Oxford"><span class="brand-city"></span></div>
+  <form class="setup-card" id="setup-form">
+    <h1>countdown setup</h1>
+    <label class="setup-where">haven location <input type="text" name="location" maxlength="24" placeholder="e.g. Brighton" autocomplete="off"></label>
+    <div class="setup-times">
+      <label>submission deadline <input type="time" name="deadline" required></label>
+      <label>food boss fight at <input type="time" name="bossTime"></label>
+    </div>
+    <p class="setup-note">times are for today, on this computer's clock</p>
+    <fieldset class="setup-toggles">
+      <legend>features</legend>
+      <label><input type="checkbox" name="flips"><span>hedgehog backflips</span></label>
+      <label><input type="checkbox" name="moods"><span>hedgehog moods (sleepy, panic, party)</span></label>
+      <label><input type="checkbox" name="events"><span>mini events (friend, squirrel, leaf letters)</span></label>
+      <label><input type="checkbox" name="tips"><span>jam tip signs</span></label>
+      <label><input type="checkbox" name="food"><span>food attack</span></label>
+      <label><input type="checkbox" name="boss"><span>food boss fight</span></label>
+      <label><input type="checkbox" name="ship"><span>ship link + boat ride (last 90 min)</span></label>
+      <label><input type="checkbox" name="alerts"><span>red warning flashes (last hour)</span></label>
+      <label><input type="checkbox" name="stream"><span>gaming stream breaks</span></label>
+      <label><input type="checkbox" name="clap"><span>clap meter button</span></label>
+    </fieldset>
+    <div class="setup-actions">
+      <button type="button" class="setup-reset" id="setup-reset">reset to defaults</button>
+      <button type="submit" class="setup-go">start the countdown</button>
+    </div>
+  </form>
+  </div>
+</div>
+<button class="setup-gear" id="setup-gear" type="button" aria-label="open countdown setup" title="countdown setup">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+</button>
+<script>
+  // start screen: shown each time the page opens (once per tab), skipped for #preview links
+  (() => {
+    const setup = document.getElementById("setup");
+    const form = document.getElementById("setup-form");
+    const logo = document.getElementById("setup-logo");
+    const fill = config => {
+      form.location.value = config.location;
+      renderBrand(logo, config.location);
+      form.deadline.value = config.deadline;
+      form.bossTime.value = config.bossTime;
+      for (const [name, value] of Object.entries(config.features)) form[name].checked = value;
+      form.bossTime.disabled = !form.boss.checked;
+    };
+    let started = false;
+    try { started = sessionStorage.getItem("haven-started") === "1"; } catch {}
+    if (!started && location.hash.length <= 1) {
+      setup.hidden = false;
+      fill(CONFIG);
+    }
+    form.boss.addEventListener("change", () => { form.bossTime.disabled = !form.boss.checked; });
+    form.location.addEventListener("input", () => renderBrand(logo, form.location.value));
+    document.getElementById("setup-reset").addEventListener("click", () => fill(DEFAULTS));
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const features = {};
+      for (const name of Object.keys(DEFAULTS.features)) features[name] = form[name].checked;
+      const next = { location: form.location.value.trim(), deadline: form.deadline.value, bossTime: form.bossTime.value || DEFAULTS.bossTime, features };
+      try {
+        localStorage.setItem("haven-config", JSON.stringify(next));
+        sessionStorage.setItem("haven-started", "1");
+      } catch {}
+      location.reload();
+    });
+    document.getElementById("setup-gear").addEventListener("click", () => {
+      try { sessionStorage.removeItem("haven-started"); } catch {}
+      location.hash = "";
+      location.reload();
+    });
+  })();
+</script>
+<div class="scene" aria-hidden="true">
+  <div class="bg"></div>
+  <div class="glow"></div>
+  <div id="particles"></div>
+  <img class="foreground" src="assets/hero-foreground.webp" alt="">
+  <div class="coffee">
+    <svg viewBox="0 0 60 70">
+      <path class="steam" d="M20 14 q-5 -6 0 -12"/>
+      <path class="steam" d="M30 12 q-5 -6 0 -12"/>
+      <path class="steam" d="M40 14 q-5 -6 0 -12"/>
+      <path d="M8 26 H44 V54 Q44 64 34 64 H18 Q8 64 8 54 Z M44 32 Q58 32 58 43 Q58 54 44 54" fill="#fff" stroke="#fff" stroke-width="8" stroke-linejoin="round"/>
+      <path d="M44 32 Q56 32 56 43 Q56 54 44 54" fill="none" stroke="#1f8f6b" stroke-width="5"/>
+      <path d="M8 26 H44 V54 Q44 64 34 64 H18 Q8 64 8 54 Z" fill="#2cbf90" stroke="#1f8f6b" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="26" cy="27" rx="17" ry="3.5" fill="#7a2e0e"/>
+      <path d="M17 42 q9 8 18 0" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <div class="hog" id="hog">
+    <img class="hedgehog" src="assets/hedgehog.webp" alt="">
+    <span class="hog-zzz"></span>
+    <span class="hog-sweat"><i></i><i></i><i></i></span>
+    <span class="hog-alarm">!!</span>
+    <svg class="hog-hat" viewBox="0 0 60 70">
+      <path d="M30 6 L54 62 L6 62 Z" fill="#fa681b" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M23 28 H37 M17 44 H43" stroke="#ffe382" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="30" cy="7" r="7" fill="#ffd059" stroke="#fff" stroke-width="3"/>
+    </svg>
+  </div>
+  <div class="tip-sign" id="tip-sign">
+    <span class="tip-label">jam tip</span>
+    <p></p>
+  </div>
+</div>
+
+<main>
+  <div class="logo brand" id="main-logo"><img src="assets/logo-oxford.webp" alt="Hack Club Haven Oxford"><span class="brand-city"></span></div>
+  <script>renderBrand(document.getElementById("main-logo"), CONFIG.location);</script>
+
+  <section class="countdown" id="submission" data-hour="21" data-minute="0" data-alerts="60,30,10,1" data-ship="90" data-done="submissions closed!">
+    <div class="timer" role="timer">
+      <div class="unit" style="--i:0"><div class="card" style="--r:-2deg"><span class="num" data-part="h">00</span></div><span class="label">hours</span></div>
+      <div class="sep">:</div>
+      <div class="unit" style="--i:1"><div class="card" style="--r:1.5deg"><span class="num" data-part="m">00</span></div><span class="label">minutes</span></div>
+      <div class="sep">:</div>
+      <div class="unit" style="--i:2"><div class="card" style="--r:-1deg"><span class="num" data-part="s">00</span></div><span class="label">seconds</span></div>
+    </div>
+    <div class="msg-row">
+      <p class="msg">time until submission</p>
+      <a class="ship" href="https://hack.club/hv" target="_blank" rel="noopener">
+        ship it! <b>hack.club/hv</b>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<div class="voyage" id="voyage" aria-hidden="true">
+  <div class="boat">
+    <!-- back layer: mast, sail, pennant -->
+    <svg viewBox="0 0 200 170">
+      <path d="M150 8 L150 118" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+      <path d="M156 18 L156 100 L198 94 Z" fill="#fff" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+      <path d="M150 8 L150 118" stroke="#b8774a" stroke-width="5" stroke-linecap="round"/>
+      <path d="M156 18 L156 100 L198 94 Z" fill="#ffe382" stroke="#fc8616" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M162 40 L162 92 L186 89 Z" fill="#ffd059"/>
+      <path d="M148 6 L122 13 L148 20 Z" fill="#fa681b" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+    </svg>
+    <img class="rider" src="assets/hedgehog.webp" alt="">
+    <!-- front layer: hull + waves -->
+    <svg viewBox="0 0 200 170">
+      <path d="M6 110 L194 110 Q186 160 150 164 L50 164 Q14 160 6 110 Z" fill="#fff" stroke="#fff" stroke-width="12" stroke-linejoin="round"/>
+      <path d="M6 110 L194 110 Q186 160 150 164 L50 164 Q14 160 6 110 Z" fill="#dda47d" stroke="#b8774a" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M14 126 L186 126 M24 144 L176 144" stroke="#b8774a" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+      <path d="M2 110 L198 110" stroke="#b8774a" stroke-width="9" stroke-linecap="round"/>
+      <circle cx="62" cy="134" r="7" fill="#ffe382" stroke="#b8774a" stroke-width="3"/>
+      <circle cx="100" cy="134" r="7" fill="#ffe382" stroke="#b8774a" stroke-width="3"/>
+      <circle cx="138" cy="134" r="7" fill="#ffe382" stroke="#b8774a" stroke-width="3"/>
+      <path d="M-10 160 q12 -10 24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0 V176 H-10 Z" fill="#2cbf90" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+    </svg>
+    <div class="bubble">ship it!</div>
+  </div>
+</div>
+
+<div class="edge-glow" aria-hidden="true"></div>
+<div class="hype-glow" aria-hidden="true"></div>
+<div class="hype-layer" id="hype-layer" aria-hidden="true"></div>
+
+<button class="clap-toggle" id="clap-toggle" type="button">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+  <span>clap meter</span>
+</button>
+<div class="clap-meter" id="clap-meter" role="meter" aria-label="crowd noise" title="click to turn the clap meter off">
+  <span class="clap-title">HYPE</span>
+  <div class="tube"><div class="fill"></div><div class="peak"></div></div>
+  <span class="word">make noise!</span>
+</div>
+
+<script>
+  // targets are times today on this computer's clock (deadline comes from the setup screen)
+  const MINUTE = 60 * 1000;
+  // preview switches, e.g. index.html#boss or #events,tips,hype
+  const FLAGS = new Set(location.hash.slice(1).split(",").filter(Boolean));
+  const pad = n => String(n).padStart(2, "0");
+
+  function startCountdown(section) {
+    if (section.id === "submission") [section.dataset.hour, section.dataset.minute] = CONFIG.deadline.split(":");
+    const target = todayAt(`${section.dataset.hour}:${section.dataset.minute}`);
+    const parts = {};
+    section.querySelectorAll("[data-part]").forEach(el => { parts[el.dataset.part] = el; });
+    const msg = section.querySelector(".msg");
+    // minutes-left thresholds; each one crossed raises the alert level by 1
+    const alerts = section.dataset.alerts.split(",").map(Number);
+
+    function set(el, value) {
+      if (el.textContent === value) return;
+      el.textContent = value;
+      el.classList.remove("tick");
+      void el.offsetWidth;
+      el.classList.add("tick");
+    }
+
+    function update() {
+      const left = Math.max(0, target - Date.now());
+      const total = Math.ceil(left / 1000);
+      set(parts.h, pad(Math.floor(total / 3600)));
+      set(parts.m, pad(Math.floor(total / 60) % 60));
+      set(parts.s, pad(total % 60));
+      const level = on("alerts") && left > 0 ? alerts.filter(min => left < min * MINUTE).length : 0;
+      section.dataset.level = level;
+      // page-wide effects (ship link, edge glow) follow the submission timer
+      if (section.id === "submission") {
+        document.body.dataset.alert = level;
+        document.body.dataset.ship = on("ship") && left > 0 && left < Number(section.dataset.ship) * MINUTE ? "1" : "0";
+        document.body.dataset.mood = !on("moods") ? "normal" : left === 0 ? "party" : left < 10 * MINUTE ? "panic" : left < 120 * MINUTE ? "sleepy" : "normal";
+      }
+      if (left === 0) {
+        msg.textContent = section.dataset.done;
+        section.classList.add("done");
+        return;
+      }
+      setTimeout(update, (left % 1000) + 5);
+    }
+    update();
+  }
+
+  document.querySelectorAll(".countdown").forEach(startCountdown);
+
+  const hog = document.getElementById("hog");
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // true while the hedgehog is sailing or fighting pizza, so nothing overlaps
+  let busy = false;
+  // set when the boss fight is due; stops new flips / voyages / attacks starting
+  let bossPending = false;
+  const free = () => !busy && !bossPending;
+
+  // backflip built from a real jump arc: crouch, parabola + spin, squash on landing
+  function flip({ duration = 1300, height = 115, turns = 1 } = {}) {
+    const crouch = .14, land = .84;
+    const frames = [
+      { offset: 0, transform: "translateY(0%) rotate(0deg) scale(1, 1)", easing: "ease-out" },
+      { offset: crouch * .6, transform: "translateY(5%) rotate(0deg) scale(1.08, .88)", easing: "ease-in" },
+      { offset: crouch, transform: "translateY(3%) rotate(0deg) scale(1.04, .94)" },
+    ];
+    const steps = 24;
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      const y = -4 * height * t * (1 - t);
+      // mostly steady spin, eased a little at take-off and landing
+      const eased = t * t * (3 - 2 * t);
+      const spin = .55 * t + .45 * eased;
+      const stretch = 1 + .06 * Math.sin(Math.PI * t);
+      frames.push({
+        offset: crouch + (land - crouch) * t,
+        transform: `translateY(${y}%) rotate(${-360 * turns * spin}deg) scale(${2 - stretch}, ${stretch})`,
+      });
+    }
+    frames.push(
+      { offset: land + .06, transform: `translateY(2%) rotate(${-360 * turns}deg) scale(1.1, .88)`, easing: "ease-out" },
+      { offset: land + .12, transform: `translateY(0%) rotate(${-360 * turns}deg) scale(.97, 1.04)`, easing: "ease-in-out" },
+      { offset: 1, transform: `translateY(0%) rotate(${-360 * turns}deg) scale(1, 1)` },
+    );
+    return hog.animate(frames, { duration, easing: "linear" }).finished.catch(() => {});
+  }
+
+  // hedgehog does a backflip every 8-16s
+  (function scheduleFlip() {
+    setTimeout(() => {
+      if (on("flips") && !still() && free() && !hog.classList.contains("away")) flip();
+      scheduleFlip();
+    }, 8000 + Math.random() * 8000);
+  })();
+
+  // while the ship link is up, he hops out of the corner and sails across every 30-45s
+  const voyage = document.getElementById("voyage");
+  function endVoyage() {
+    if (!voyage.classList.contains("go")) return;
+    voyage.classList.remove("go");
+    hog.classList.remove("away");
+    busy = false;
+  }
+  voyage.addEventListener("animationend", e => {
+    if (e.animationName === "sail") endVoyage();
+  });
+  function runVoyage() {
+    busy = true;
+    hog.getAnimations().forEach(a => a.cancel());
+    hog.classList.add("away");
+    setTimeout(() => voyage.classList.add("go"), 600);
+    // fallback in case animationend is missed (e.g. background tab)
+    setTimeout(endVoyage, 600 + 12000 + 500);
+  }
+  (function voyageLoop() {
+    // skipped under reduced motion: no animationend would ever bring him back
+    if (!still() && free() && document.body.dataset.ship === "1") {
+      runVoyage();
+      setTimeout(voyageLoop, 30000 + Math.random() * 15000);
+    } else {
+      setTimeout(voyageLoop, 5000);
+    }
+  })();
+
+  // pizza attack: a pizza spins in, splits into slices, they fire at the
+  // hedgehog one by one and he flip-kicks each away
+  const SLICES = 6;
+  const polar = (r, deg) => {
+    const a = deg * Math.PI / 180;
+    return `${(r * Math.cos(a)).toFixed(2)} ${(r * Math.sin(a)).toFixed(2)}`;
+  };
+
+  function makeSlice(i) {
+    const a0 = -90 + i * (360 / SLICES), a1 = a0 + 360 / SLICES, mid = (a0 + a1) / 2;
+    const wedge = `M0 0 L${polar(86, a0)} A86 86 0 0 1 ${polar(86, a1)} Z`;
+    const crust = `M${polar(86, a0)} A86 86 0 0 1 ${polar(86, a1)}`;
+    const [px, py] = polar(52, mid).split(" ");
+    const [qx, qy] = polar(27, mid + 14).split(" ");
+    const [bx, by] = polar(68, mid - 15).split(" ");
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "-100 -100 200 200");
+    svg.setAttribute("class", "slice");
+    svg.innerHTML = `
+      <path d="${wedge}" fill="#fff" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+      <path d="${crust}" fill="none" stroke="#fff" stroke-width="22" stroke-linecap="round"/>
+      <path d="${wedge}" fill="#ffd059" stroke="#fc8616" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="${px}" cy="${py}" r="12" fill="#ed5615"/>
+      <circle cx="${px - 3}" cy="${py - 3}" r="4" fill="#fa681b"/>
+      <circle cx="${qx}" cy="${qy}" r="7" fill="#ed5615"/>
+      <ellipse cx="${bx}" cy="${by}" rx="6" ry="3" fill="#97a01a" transform="rotate(${mid} ${bx} ${by})"/>
+      <path d="${crust}" fill="none" stroke="#b8774a" stroke-width="14" stroke-linecap="round"/>
+      <path d="${crust}" fill="none" stroke="#dda47d" stroke-width="8" stroke-linecap="round"/>`;
+    return { el: svg, mid };
+  }
+
+  function pow(layer, x, y) {
+    const points = Array.from({ length: 16 }, (_, k) => polar(k % 2 ? 15 : 36, k * 22.5 - 90)).join(" ");
+    const star = document.createElementNS(SVG_NS, "svg");
+    star.setAttribute("viewBox", "-45 -45 90 90");
+    star.setAttribute("class", "pow");
+    star.style.left = x + "px";
+    star.style.top = y + "px";
+    star.innerHTML = `
+      <polygon points="${points}" fill="#fff" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+      <polygon points="${points}" fill="#ffe382" stroke="#fa681b" stroke-width="4" stroke-linejoin="round"/>`;
+    layer.appendChild(star);
+    star.animate([
+      { transform: "scale(0) rotate(-20deg)", opacity: 1 },
+      { transform: "scale(1.25) rotate(10deg)", opacity: 1, offset: .4 },
+      { transform: "scale(1.4) rotate(20deg)", opacity: 0 },
+    ], { duration: 420, easing: "ease-out" }).finished.then(() => star.remove());
+  }
+
+  async function pizzaAttack() {
+    busy = true;
+    const vw = innerWidth, vh = innerHeight;
+    const size = Math.max(100, Math.min(170, vw * .12));
+    // keep the V formation on-screen on narrow phones
+    const origin = { x: Math.max(vw * .28, size * 1.7), y: vh * .6 };
+    const box = hog.getBoundingClientRect();
+    const target = { x: box.left + box.width * .3, y: box.top + box.height * .45 };
+
+    const layer = document.createElement("div");
+    layer.className = "pizza-attack";
+    layer.setAttribute("aria-hidden", "true");
+    document.body.appendChild(layer);
+
+    const slices = Array.from({ length: SLICES }, (_, i) => {
+      const s = makeSlice(i);
+      Object.assign(s.el.style, {
+        left: origin.x - size / 2 + "px",
+        top: origin.y - size / 2 + "px",
+        width: size + "px",
+        height: size + "px",
+      });
+      layer.appendChild(s.el);
+      return s;
+    });
+    const move = (s, frames, options) => s.el.animate(frames, { fill: "forwards", ...options }).finished;
+
+    // 1. whole pizza spins in from the top-left
+    await Promise.all(slices.map(s => move(s, [
+      { transform: `translate(${-origin.x - size}px, ${-origin.y - size}px) rotate(-540deg) scale(.4)` },
+      { transform: "translate(0px, 0px) rotate(0deg) scale(1.08)", offset: .8 },
+      { transform: "translate(0px, 0px) rotate(0deg) scale(1)" },
+    ], { duration: 1100, easing: "cubic-bezier(.2, .8, .3, 1)" })));
+    await sleep(350);
+
+    // 2. it pops apart into slices
+    const gap = size * .16;
+    slices.forEach(s => {
+      const a = s.mid * Math.PI / 180;
+      s.x = Math.cos(a) * gap;
+      s.y = Math.sin(a) * gap;
+    });
+    await Promise.all(slices.map(s => move(s, [
+      { transform: "translate(0px, 0px) rotate(0deg)" },
+      { transform: `translate(${s.x}px, ${s.y}px) rotate(0deg)` },
+    ], { duration: 450, easing: "cubic-bezier(.3, 1.6, .5, 1)" })));
+    await sleep(250);
+
+    // 3. slices fan out into a V facing the hedgehog and turn their tips
+    // (tip sits at the svg centre) toward him
+    const aim = Math.atan2(target.y - origin.y, target.x - origin.x);
+    const perp = aim + Math.PI / 2;
+    await Promise.all(slices.map((s, i) => {
+      const k = i - (SLICES - 1) / 2;
+      const x = Math.cos(perp) * k * size * .42 - Math.cos(aim) * Math.abs(k) * size * .14;
+      const y = Math.sin(perp) * k * size * .42 - Math.sin(aim) * Math.abs(k) * size * .14;
+      const toHog = Math.atan2(target.y - origin.y - y, target.x - origin.x - x) * 180 / Math.PI;
+      const r = ((toHog - (s.mid + 180)) % 360 + 540) % 360 - 180;
+      const from = `translate(${s.x}px, ${s.y}px) rotate(0deg)`;
+      Object.assign(s, { x, y, r });
+      return move(s, [
+        { transform: from },
+        { transform: `translate(${x}px, ${y}px) rotate(${r}deg)` },
+      ], { duration: 550, easing: "cubic-bezier(.3, 1.4, .5, 1)" });
+    }));
+    await sleep(300);
+
+    // 4. fire one at a time; he flips into each and kicks it off-screen
+    const hitX = target.x - origin.x, hitY = target.y - origin.y;
+    const flight = 480, kick = { duration: 700, height: 75 }, contact = 270;
+    for (const [i, s] of slices.entries()) {
+      move(s, [
+        { transform: `translate(${s.x}px, ${s.y}px) rotate(${s.r}deg)` },
+        { transform: `translate(${hitX}px, ${hitY}px) rotate(${s.r}deg)` },
+      ], { duration: flight, easing: "cubic-bezier(.5, 0, .9, .6)" });
+      setTimeout(() => flip(kick), flight - contact);
+      await sleep(flight);
+
+      pow(layer, target.x, target.y);
+      const awayX = hitX - vw * (.25 + Math.random() * .35);
+      const awayY = -origin.y - size * 1.5;
+      move(s, [
+        { transform: `translate(${hitX}px, ${hitY}px) rotate(${s.r}deg)` },
+        { transform: `translate(${awayX}px, ${awayY}px) rotate(${s.r - 900}deg)` },
+      ], { duration: 900, easing: "cubic-bezier(.1, .6, .4, 1)" });
+      await sleep(i === slices.length - 1 ? 1000 : 380);
+    }
+
+    layer.remove();
+    busy = false;
+  }
+
+  (function attackLoop(delay) {
+    setTimeout(() => {
+      if ((on("food") || FLAGS.has("food")) && !still() && free() && !hog.classList.contains("away")) pizzaAttack();
+      attackLoop(45000 + Math.random() * 25000);
+    }, delay);
+  })(12000);
+
+  // boss fight time comes from the setup screen (add #boss to the URL to preview it right away)
+  const BOSS_WINDOW = 3 * MINUTE;
+
+  const BOSS_SVG = `
+    <svg class="boss-body" viewBox="-130 -170 260 300">
+      <!-- crown -->
+      <path d="M-58 -112 L-64 -160 L-32 -134 L0 -168 L32 -134 L64 -160 L58 -112 Z" fill="#fff" stroke="#fff" stroke-width="14" stroke-linejoin="round"/>
+      <path d="M-58 -112 L-64 -160 L-32 -134 L0 -168 L32 -134 L64 -160 L58 -112 Z" fill="#ffd059" stroke="#fa681b" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="0" cy="-128" r="8" fill="#e8262b" stroke="#fff" stroke-width="3"/>
+      <circle cx="-36" cy="-122" r="5" fill="#2cbf90" stroke="#fff" stroke-width="2"/>
+      <circle cx="36" cy="-122" r="5" fill="#2cbf90" stroke="#fff" stroke-width="2"/>
+      <!-- pizza -->
+      <circle r="120" fill="#fff"/>
+      <circle r="112" fill="#b8774a"/>
+      <circle r="104" fill="#dda47d"/>
+      <circle r="92" fill="#ffd059" stroke="#fc8616" stroke-width="3"/>
+      <g stroke="#fc8616" stroke-width="2" opacity=".35">
+        <path d="M-92 0 L92 0 M-46 -80 L46 80 M46 -80 L-46 80"/>
+      </g>
+      <g fill="#ed5615">
+        <circle cx="-62" cy="-46" r="14"/><circle cx="64" cy="-50" r="13"/>
+        <circle cx="-72" cy="34" r="12"/><circle cx="72" cy="30" r="13"/>
+        <circle cx="0" cy="-78" r="10"/><circle cx="-34" cy="74" r="10"/><circle cx="36" cy="76" r="11"/>
+      </g>
+      <g fill="#fa681b">
+        <circle cx="-66" cy="-50" r="5"/><circle cx="60" cy="-54" r="4.5"/><circle cx="68" cy="26" r="4.5"/>
+      </g>
+      <!-- angry face -->
+      <g class="face-normal">
+        <ellipse cx="-38" cy="-8" rx="21" ry="23" fill="#fff" stroke="#7a2e0e" stroke-width="4"/>
+        <ellipse cx="38" cy="-8" rx="21" ry="23" fill="#fff" stroke="#7a2e0e" stroke-width="4"/>
+        <circle cx="-31" cy="-2" r="9" fill="#3a1a08"/>
+        <circle cx="45" cy="-2" r="9" fill="#3a1a08"/>
+        <path d="M-64 -44 L-16 -26 M64 -44 L16 -26" stroke="#7a2e0e" stroke-width="10" stroke-linecap="round"/>
+        <path d="M-46 32 Q0 74 46 32 Z" fill="#7a2e0e" stroke="#7a2e0e" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M-30 36 L-23 50 L-16 38 Z M30 36 L23 50 L16 38 Z" fill="#fff"/>
+      </g>
+      <!-- ouch face -->
+      <g class="face-hurt" stroke="#7a2e0e" stroke-width="8" stroke-linecap="round" fill="none">
+        <path d="M-52 -22 L-24 6 M-24 -22 L-52 6 M24 -22 L52 6 M52 -22 L24 6"/>
+        <path d="M-40 46 q10 -12 20 0 t20 0 t20 0 t20 0"/>
+      </g>
+    </svg>`;
+
+  const ROCKET_SVG = `
+    <svg viewBox="-36 -16 72 32">
+      <path class="flame" d="M-22 -6 L-36 0 L-22 6 Z" fill="#ffd059" stroke="#fa681b" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M-22 -9 L-29 -16 L-12 -9 Z M-22 9 L-29 16 L-12 9 Z" fill="#ed5615" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M-22 -9 L14 -9 Q30 -7 35 0 Q30 7 14 9 L-22 9 Z" fill="#fff" stroke="#ed5615" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M14 -9 Q30 -7 35 0 Q30 7 14 9 Z" fill="#fa681b"/>
+      <circle cx="2" cy="0" r="4.5" fill="#2cbf90" stroke="#ed5615" stroke-width="2"/>
+    </svg>`;
+
+  const PEPPERONI_SVG = `
+    <svg viewBox="-24 -24 48 48">
+      <circle r="20" fill="#ed5615" stroke="#fff" stroke-width="4"/>
+      <circle cx="-7" cy="-6" r="4" fill="#b8381a"/><circle cx="6" cy="5" r="3.5" fill="#b8381a"/>
+      <circle cx="5" cy="-8" r="2.5" fill="#fa681b"/>
+    </svg>`;
+
+  function spawn(layer, className, html, x, y) {
+    const el = document.createElement("div");
+    el.className = className;
+    el.innerHTML = html;
+    if (x !== undefined) {
+      el.style.left = x + "px";
+      el.style.top = y + "px";
+    }
+    layer.appendChild(el);
+    return el;
+  }
+
+  function shakeScreen(layer, amp, duration) {
+    const frames = Array.from({ length: 14 }, (_, i) => {
+      const fade = 1 - i / 13;
+      return { translate: `${(Math.random() * 2 - 1) * amp * fade}px ${(Math.random() * 2 - 1) * amp * fade}px` };
+    });
+    frames[frames.length - 1] = { translate: "0px 0px" };
+    [document.querySelector(".scene"), layer].forEach(el => el.animate(frames, { duration }));
+  }
+
+  async function banner(layer, title, sub, hold) {
+    const el = spawn(layer, "boss-banner", `<h2>${title}</h2>${sub ? `<p>${sub}</p>` : ""}`);
+    await el.animate([
+      { transform: "scale(0) rotate(-8deg)", opacity: 0 },
+      { transform: "scale(1.15) rotate(3deg)", opacity: 1, offset: .6 },
+      { transform: "scale(1) rotate(0deg)", opacity: 1 },
+    ], { duration: 450, easing: "ease-out", fill: "forwards" }).finished;
+    await sleep(hold);
+    await el.animate([
+      { transform: "scale(1)", opacity: 1 },
+      { transform: "scale(1.4)", opacity: 0 },
+    ], { duration: 300, easing: "ease-in", fill: "forwards" }).finished;
+    el.remove();
+  }
+
+  async function bossFight() {
+    busy = true;
+    const main = document.querySelector("main");
+    const layer = spawn(document.body, "boss-layer", "");
+    layer.setAttribute("aria-hidden", "true");
+    const vw = innerWidth, vh = innerHeight;
+    const dim = main.animate([{ opacity: 1 }, { opacity: .25 }], { duration: 600, fill: "forwards" });
+
+    // 1. warning
+    shakeScreen(layer, 6, 1200);
+    await banner(layer, "BOSS FIGHT!", "a wild food appears", 900);
+
+    // 2. boss rises from the bottom, health bar drops in
+    const boss = spawn(layer, "boss", BOSS_SVG);
+    const body = boss.querySelector(".boss-body");
+    shakeScreen(layer, 12, 1800);
+    await boss.animate([
+      { transform: "translateY(110%)" },
+      { transform: "translateY(-4%)", offset: .85 },
+      { transform: "translateY(0)" },
+    ], { duration: 1800, easing: "ease-out" }).finished;
+    const idle = body.animate([
+      { transform: "translateY(0) rotate(-3deg)" },
+      { transform: "translateY(-3%) rotate(3deg)" },
+    ], { duration: 1500, iterations: Infinity, direction: "alternate", easing: "ease-in-out" });
+
+    const hp = spawn(layer, "boss-hp", `<span class="boss-name">BIG CHEESE</span><div class="bar"><i></i></div>`);
+    const fill = hp.querySelector("i");
+    await hp.animate([{ transform: "translateY(-160%)" }, { transform: "translateY(0)" }],
+      { duration: 500, easing: "cubic-bezier(.3, 1.5, .5, 1)" }).finished;
+    fill.style.width = "100%";
+    await sleep(700);
+
+    // fixed aim points (hedgehog is idle right now)
+    const hb = hog.getBoundingClientRect();
+    const hogHit = { x: hb.left + hb.width * .4, y: hb.top + hb.height * .45 };
+    const hogGun = { x: hb.left + hb.width * .2, y: hb.top + hb.height * .3 };
+    const bb = boss.getBoundingClientRect();
+    const bossCore = { x: bb.left + bb.width / 2, y: bb.top + bb.height * .6 };
+    const bossMouth = { x: bb.left + bb.width / 2, y: bb.top + bb.height * .72 };
+
+    function shootPepperoni(flight) {
+      const p = spawn(layer, "boss-proj", PEPPERONI_SVG, bossMouth.x, bossMouth.y);
+      const dx = hogHit.x - bossMouth.x, dy = hogHit.y - bossMouth.y;
+      const len = Math.hypot(dx, dy), extra = Math.hypot(vw, vh);
+      const total = flight * (1 + extra / len);
+      p.animate([
+        { transform: "translate(0px, 0px) rotate(0deg) scale(.4)" },
+        { transform: `translate(${dx}px, ${dy}px) rotate(540deg) scale(1)`, offset: flight / total },
+        { transform: `translate(${dx + dx / len * extra}px, ${dy + dy / len * extra}px) rotate(${540 * total / flight}deg) scale(1)` },
+      ], { duration: total, easing: "linear" }).finished.then(() => p.remove());
+    }
+
+    // boss spits a burst of pepperoni; hedgehog times one tall backflip over all of it
+    async function volley(count) {
+      const flight = 650, gap = 100;
+      const dodge = { duration: 1200, height: 135 };
+      // middle of the airborne part of flip(): (crouch + (land - crouch) / 2) * duration
+      const peak = (.14 + .35) * dodge.duration;
+      const firstHit = flight, lastHit = (count - 1) * gap + flight;
+      const flipStart = (firstHit + lastHit) / 2 - peak;
+      for (let k = 0; k < count; k++) {
+        setTimeout(() => {
+          shootPepperoni(flight);
+          boss.animate([{ transform: "scale(1)" }, { transform: "scale(1.06, .94)" }, { transform: "scale(1)" }],
+            { duration: 160 });
+        }, k * gap);
+      }
+      setTimeout(() => flip(dodge), flipStart);
+      await sleep(Math.max(lastHit + 450, flipStart + dodge.duration + 100));
+    }
+
+    let health = 100;
+    async function fireRocket(final) {
+      const bubble = spawn(layer, "boss-bubble", "ship it!", hogGun.x, hogGun.y - 20);
+      bubble.animate([
+        { transform: "translate(-50%, -100%) scale(0)" },
+        { transform: "translate(-50%, -100%) scale(1.15)", offset: .2 },
+        { transform: "translate(-50%, -100%) scale(1)", offset: .3 },
+        { transform: "translate(-50%, -100%) scale(1)", offset: .85 },
+        { transform: "translate(-50%, -100%) scale(0)" },
+      ], { duration: 1100, easing: "ease-out", fill: "forwards" }).finished.then(() => bubble.remove());
+      hog.animate([
+        { transform: "translateX(0) scale(1, 1)" },
+        { transform: "translateX(6%) scale(.92, 1.06)", offset: .3 },
+        { transform: "translateX(0) scale(1, 1)" },
+      ], { duration: 320, easing: "ease-out" });
+
+      const rocket = spawn(layer, "boss-rocket", ROCKET_SVG, hogGun.x, hogGun.y);
+      const dx = bossCore.x - hogGun.x, dy = bossCore.y - hogGun.y;
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      // slight upward arc on the way
+      const arcX = dx * .5 + dy * .15, arcY = dy * .5 - Math.abs(dx) * .15;
+      await rocket.animate([
+        { transform: `translate(0px, 0px) rotate(${angle - 20}deg) scale(.6)` },
+        { transform: `translate(${arcX}px, ${arcY}px) rotate(${angle - 8}deg) scale(1)`, offset: .45 },
+        { transform: `translate(${dx}px, ${dy}px) rotate(${angle + 6}deg) scale(1.1)` },
+      ], { duration: final ? 900 : 700, easing: "cubic-bezier(.4, 0, .9, .7)" }).finished;
+      rocket.remove();
+
+      // impact
+      health = Math.max(0, health - 20);
+      fill.style.width = health + "%";
+      pow(layer, bossCore.x + (Math.random() - .5) * 40, bossCore.y + (Math.random() - .5) * 40);
+      const flash = spawn(layer, "boss-flash", "");
+      flash.animate([{ opacity: .45 }, { opacity: 0 }], { duration: 260 }).finished.then(() => flash.remove());
+      const dmg = spawn(layer, "boss-dmg", "-20", bossCore.x + (Math.random() - .5) * 80, bossCore.y - 40);
+      dmg.animate([
+        { transform: "translate(-50%, -50%) scale(.5)", opacity: 1 },
+        { transform: "translate(-50%, -120%) scale(1.2)", opacity: 1, offset: .3 },
+        { transform: "translate(-50%, -260%) scale(1)", opacity: 0 },
+      ], { duration: 900, easing: "ease-out" }).finished.then(() => dmg.remove());
+      shakeScreen(layer, 8, 400);
+      boss.classList.add("hurt");
+      await boss.animate([
+        { transform: "translateX(0) rotate(0deg)", filter: "brightness(2.2)" },
+        { transform: "translateX(-4%) rotate(-6deg)", filter: "brightness(1.4)", offset: .25 },
+        { transform: "translateX(3%) rotate(4deg)", filter: "brightness(1)", offset: .5 },
+        { transform: "translateX(-1%) rotate(-1deg)", offset: .75 },
+        { transform: "translateX(0) rotate(0deg)" },
+      ], { duration: 600, easing: "ease-out" }).finished;
+      if (health > 0) boss.classList.remove("hurt");
+    }
+
+    // 3. five rounds, each one angrier
+    const volleys = [1, 2, 3, 4, 5];
+    for (const [round, count] of volleys.entries()) {
+      await sleep(400);
+      await volley(count);
+      await sleep(250);
+      await fireRocket(round === volleys.length - 1);
+    }
+
+    // 4. boss blows up into slices + confetti
+    idle.cancel();
+    shakeScreen(layer, 16, 1300);
+    await boss.animate(Array.from({ length: 12 }, (_, i) => ({
+      transform: `translate(${(Math.random() - .5) * 6}%, ${(Math.random() - .5) * 4}%) scale(${1 + i * .02})`,
+      filter: `brightness(${i % 2 ? 2.4 : 1})`,
+    })), { duration: 1200 }).finished;
+    const flash = spawn(layer, "boss-flash", "");
+    flash.animate([{ opacity: .9 }, { opacity: 0 }], { duration: 700 }).finished.then(() => flash.remove());
+    const center = { x: bb.left + bb.width / 2, y: bb.top + bb.height * .6 };
+    const sliceSize = bb.width * .9;
+    boss.remove();
+    hp.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: "forwards" });
+
+    for (let i = 0; i < SLICES; i++) {
+      const s = makeSlice(i);
+      Object.assign(s.el.style, {
+        left: center.x - sliceSize / 2 + "px",
+        top: center.y - sliceSize / 2 + "px",
+        width: sliceSize + "px",
+        height: sliceSize + "px",
+      });
+      layer.appendChild(s.el);
+      const a = s.mid * Math.PI / 180, dist = Math.hypot(vw, vh) * .8;
+      s.el.animate([
+        { transform: "translate(0px, 0px) rotate(0deg)", opacity: 1 },
+        { transform: `translate(${Math.cos(a) * dist}px, ${Math.sin(a) * dist}px) rotate(${(i % 2 ? 1 : -1) * 720}deg)`, opacity: 1 },
+      ], { duration: 1400, easing: "cubic-bezier(.1, .7, .3, 1)", fill: "forwards" });
+    }
+    for (let i = 0; i < 60; i++) {
+      const bit = spawn(layer, "boss-confetti", "", center.x, center.y);
+      bit.style.background = leafColors[i % leafColors.length];
+      const vx = (Math.random() - .5) * vw * .9, vy = -(.3 + Math.random() * .5) * vh, g = vh * 1.4;
+      const frames = Array.from({ length: 9 }, (_, k) => {
+        const t = k / 8;
+        return { transform: `translate(${vx * t}px, ${vy * t + g * t * t * .5}px) rotate(${t * 900}deg)`, opacity: t > .8 ? (1 - t) * 5 : 1 };
+      });
+      bit.animate(frames, { duration: 1600 + Math.random() * 900, easing: "linear", fill: "forwards" });
+    }
+
+    // 5. victory
+    flip({ duration: 1900, height: 170, turns: 3 });
+    await banner(layer, "BOSS DEFEATED!", "now go ship it! hack.club/hv", 2200);
+    await main.animate([{ opacity: .25 }, { opacity: 1 }], { duration: 800 }).finished;
+    dim.cancel();
+    layer.remove();
+    busy = false;
+    bossPending = false;
+  }
+
+  function bossWatch() {
+    if (still() || !(on("boss") || FLAGS.has("boss"))) return;
+    const at = todayAt(CONFIG.bossTime);
+    const t = Date.now();
+    if (FLAGS.has("boss") || (t >= at && t < at + BOSS_WINDOW)) bossPending = true;
+    // wait for any sailing / pizza attack to finish first
+    if (bossPending && !busy) {
+      bossFight();
+      return;
+    }
+    setTimeout(bossWatch, 500);
+  }
+  setTimeout(bossWatch, 800);
+
+  // falling autumn leaves + floating light motes
+  const particles = document.getElementById("particles");
+  const leafColors = ["#fa681b", "#fc8616", "#ffd059", "#ed5615", "#b8c220"];
+  for (let i = 0; i < 18; i++) {
+    const leaf = document.createElement("div");
+    leaf.className = "leaf";
+    leaf.style.left = Math.random() * 100 + "vw";
+    leaf.style.setProperty("--s", 14 + Math.random() * 16 + "px");
+    leaf.style.setProperty("--c", leafColors[i % leafColors.length]);
+    leaf.style.setProperty("--d", 9 + Math.random() * 9 + "s");
+    leaf.style.setProperty("--delay", -Math.random() * 18 + "s");
+    particles.appendChild(leaf);
+  }
+  for (let i = 0; i < 14; i++) {
+    const mote = document.createElement("div");
+    mote.className = "mote";
+    mote.style.left = Math.random() * 100 + "vw";
+    mote.style.top = 20 + Math.random() * 70 + "vh";
+    mote.style.setProperty("--d", 3 + Math.random() * 4 + "s");
+    mote.style.setProperty("--delay", -Math.random() * 6 + "s");
+    particles.appendChild(mote);
+  }
+
+  // ---------- hedgehog moods (set from the countdown: normal / sleepy / panic / party) ----------
+  const hogImg = hog.querySelector(".hedgehog");
+  const zzz = hog.querySelector(".hog-zzz");
+
+  function yawn() {
+    hogImg.animate([
+      { scale: "1 1" },
+      { scale: "1.06 .9", offset: .3 },
+      { scale: ".95 1.1", offset: .6 },
+      { scale: "1 1" },
+    ], { duration: 1600, easing: "ease-in-out" });
+    for (let i = 0; i < 3; i++) {
+      const z = document.createElement("span");
+      z.textContent = "z";
+      zzz.appendChild(z);
+      z.animate([
+        { transform: "translate(0, 0) scale(.5)", opacity: 0 },
+        { transform: `translate(${10 + i * 6}px, -20px) scale(${.8 + i * .2})`, opacity: 1, offset: .3 },
+        { transform: `translate(${30 + i * 14}px, -70px) scale(${1 + i * .25})`, opacity: 0 },
+      ], { duration: 2200, delay: 500 + i * 350, easing: "ease-out", fill: "backwards" })
+        .finished.then(() => z.remove());
+    }
+  }
+
+  (function yawnLoop() {
+    setTimeout(() => {
+      if (!still() && document.body.dataset.mood === "sleepy" && !hog.classList.contains("away")) yawn();
+      yawnLoop();
+    }, 14000 + Math.random() * 8000);
+  })();
+
+  // ---------- mini events: friend says hi, squirrel heist, leaves spell SHIP IT ----------
+  const scene = document.querySelector(".scene");
+
+  const SQUIRREL_SVG = `
+    <svg viewBox="0 0 120 100">
+      <path d="M40 80 C8 86 0 48 14 26 C26 6 58 8 54 34 C52 48 38 50 36 40 C46 40 46 24 34 24 C20 24 16 50 30 64 Z" fill="#c9824f" stroke="#fff" stroke-width="5" stroke-linejoin="round"/>
+      <ellipse cx="66" cy="66" rx="22" ry="20" fill="#dda47d" stroke="#fff" stroke-width="5"/>
+      <ellipse cx="72" cy="70" rx="11" ry="13" fill="#f6dcc2"/>
+      <ellipse cx="56" cy="86" rx="9" ry="5" fill="#b8774a"/>
+      <ellipse cx="80" cy="86" rx="9" ry="5" fill="#b8774a"/>
+      <path d="M79 31 L83 14 L93 28 Z" fill="#b8774a" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="88" cy="42" r="16" fill="#dda47d" stroke="#fff" stroke-width="5"/>
+      <circle cx="88" cy="42" r="16" fill="#dda47d"/>
+      <circle cx="93" cy="39" r="3.4" fill="#3a1a08"/>
+      <circle cx="94" cy="38" r="1.1" fill="#fff"/>
+      <circle cx="104" cy="45" r="2.6" fill="#7a2e0e"/>
+      <circle cx="92" cy="50" r="4" fill="#f0907a" opacity=".7"/>
+    </svg>`;
+
+  function speech(parent, text) {
+    const b = document.createElement("div");
+    b.className = "mini-bubble";
+    b.textContent = text;
+    parent.appendChild(b);
+    return b.animate([
+      { transform: "translate(-50%, 0) scale(0)" },
+      { transform: "translate(-50%, 0) scale(1.15)", offset: .12 },
+      { transform: "translate(-50%, 0) scale(1)", offset: .2 },
+      { transform: "translate(-50%, 0) scale(1)", offset: .85 },
+      { transform: "translate(-50%, 0) scale(0)" },
+    ], { duration: 1800, easing: "ease-out", fill: "forwards" }).finished.then(() => b.remove());
+  }
+
+  async function friendSaysHi() {
+    const friend = document.createElement("div");
+    friend.className = "friend";
+    friend.innerHTML = `<img src="assets/hedgehog.webp" alt="">`;
+    scene.appendChild(friend);
+    const img = friend.querySelector("img");
+    const waddle = img.animate([
+      { transform: "translateY(0) rotate(-6deg)" },
+      { transform: "translateY(-8%) rotate(0deg)" },
+      { transform: "translateY(0) rotate(6deg)" },
+    ], { duration: 420, iterations: Infinity, direction: "alternate", easing: "ease-in-out" });
+    const stop = innerWidth * .55;
+    await friend.animate([{ transform: "translateX(0)" }, { transform: `translateX(${stop}px)` }],
+      { duration: 3200, easing: "ease-in-out", fill: "forwards" }).finished;
+    waddle.pause();
+    await speech(friend, "hi!!");
+    if (!hog.classList.contains("away")) {
+      speech(hog, "hiii!");
+      await flip({ duration: 1100, height: 90 });
+    }
+    waddle.play();
+    await friend.animate([{ transform: `translateX(${stop}px)` }, { transform: "translateX(-10px)" }],
+      { duration: 2600, easing: "ease-in", fill: "forwards" }).finished;
+    friend.remove();
+  }
+
+  async function squirrelHeist() {
+    const spot = innerWidth * .4;
+    const sliceSize = Math.max(54, Math.min(80, innerWidth * .06));
+    const slice = makeSlice(0).el;
+    slice.classList.add("heist-slice");
+    // wedge fills the top half of its svg, so sink the box to sit the slice on the grass
+    Object.assign(slice.style, {
+      left: spot + "px", width: sliceSize + "px", height: sliceSize + "px",
+      bottom: `calc(2vh - ${sliceSize * .45}px)`,
+    });
+    scene.appendChild(slice);
+    await slice.animate([
+      { transform: "translateY(-60vh) rotate(-200deg)" },
+      { transform: "translateY(0) rotate(15deg)", offset: .75 },
+      { transform: "translateY(-12%) rotate(10deg)", offset: .88 },
+      { transform: "translateY(0) rotate(12deg)" },
+    ], { duration: 900, easing: "ease-in", fill: "forwards" }).finished;
+    await sleep(900);
+
+    const sq = document.createElement("div");
+    sq.className = "squirrel";
+    sq.innerHTML = SQUIRREL_SVG;
+    scene.appendChild(sq);
+    const hop = sq.firstElementChild.animate([
+      { transform: "translateY(0) rotate(0deg)" },
+      { transform: "translateY(-14%) rotate(-4deg)" },
+    ], { duration: 140, iterations: Infinity, direction: "alternate", easing: "ease-out" });
+    // slice 0's wedge sits in the right half of its box; nose (at 87% of his width) touches it
+    const w = sq.offsetWidth, wedgeLeft = spot + sliceSize * .5;
+    const grabX = wedgeLeft - w * .85;
+    await sq.animate([{ transform: `translateX(${-w * 1.2}px)` }, { transform: `translateX(${grabX}px)` }],
+      { duration: 900, easing: "ease-out", fill: "both" }).finished;
+    hop.pause();
+    hog.classList.add("shocked");
+    await sleep(450);
+
+    // grab it, turn round (nose is now at 13% of his width) and bolt back the way he came
+    hop.play();
+    hop.updatePlaybackRate(1.6);
+    const inMouth = grabX + w * .13 - sliceSize * .9 - spot;
+    sq.animate([{ transform: `translateX(${grabX}px) scaleX(1)` }, { transform: `translateX(${grabX}px) scaleX(-1)` }],
+      { duration: 120, fill: "forwards" });
+    await slice.animate([
+      { transform: "translate(0px, 0px) rotate(12deg)" },
+      { transform: `translate(${inMouth}px, -14px) rotate(-20deg)` },
+    ], { duration: 120, fill: "forwards" }).finished;
+    const runAway = { duration: 650, easing: "ease-in", fill: "forwards" };
+    const distance = -w * 1.5 - grabX;
+    slice.animate([
+      { transform: `translate(${inMouth}px, -14px) rotate(-20deg)` },
+      { transform: `translate(${inMouth + distance}px, -14px) rotate(-20deg)` },
+    ], runAway);
+    await sq.animate([
+      { transform: `translateX(${grabX}px) scaleX(-1)` },
+      { transform: `translateX(${grabX + distance}px) scaleX(-1)` },
+    ], runAway).finished;
+    sq.remove();
+    slice.remove();
+    await sleep(700);
+    hog.classList.remove("shocked");
+  }
+
+  async function leavesSpell(text = "SHIP IT!") {
+    const vw = innerWidth, vh = innerHeight;
+    const width = Math.min(vw * .82, 760), fontSize = width / text.length * 1.55;
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.ceil(width);
+    canvas.height = Math.ceil(fontSize * 1.2);
+    const ctx = canvas.getContext("2d");
+    ctx.font = `${fontSize}px "Darumadrop One", "Jua", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    const step = Math.max(5, Math.round(fontSize / 15));
+    const points = [];
+    for (let y = 0; y < canvas.height; y += step) {
+      for (let x = 0; x < canvas.width; x += step) {
+        if (data[(y * canvas.width + x) * 4 + 3] > 128) points.push([x, y]);
+      }
+    }
+    const left = (vw - canvas.width) / 2;
+    // centred low on the grass, clear of the timer
+    const top = Math.min(vh * .82, vh - canvas.height / 2 - 30) - canvas.height / 2;
+    const size = step * 1.35;
+
+    const leaves = points.map(([x, y], i) => {
+      const leaf = document.createElement("div");
+      leaf.className = "spell-leaf";
+      leaf.style.background = leafColors[i % leafColors.length];
+      Object.assign(leaf.style, { left: left + x + "px", top: top + y + "px", width: size + "px", height: size * .62 + "px" });
+      scene.appendChild(leaf);
+      const fromX = (Math.random() - .5) * vw * 1.2, fromY = -top - y - 60 - Math.random() * vh * .3;
+      const delay = Math.random() * 500;
+      leaf.dataset.r = Math.round(Math.random() * 80 - 40);
+      leaf.animate([
+        { transform: `translate(${fromX}px, ${fromY}px) rotate(${Math.random() * 720}deg)`, opacity: 0 },
+        { transform: `translate(0px, 0px) rotate(${leaf.dataset.r}deg)`, opacity: 1 },
+      ], { duration: 1500, delay, easing: "cubic-bezier(.2, .8, .3, 1)", fill: "both" });
+      return leaf;
+    });
+    await sleep(2000);
+    // little shimmer while it's readable
+    leaves.forEach((leaf, i) => leaf.animate([
+      { transform: `translate(0px, 0px) rotate(${leaf.dataset.r}deg) scale(1)` },
+      { transform: `translate(0px, -4px) rotate(${leaf.dataset.r - 30}deg) scale(1.25)` },
+      { transform: `translate(0px, 0px) rotate(${leaf.dataset.r}deg) scale(1)` },
+    ], { duration: 500, delay: i * 4 % 600 }));
+    await sleep(1700);
+    await Promise.all(leaves.map(leaf => {
+      const dx = (Math.random() - .5) * 200, fall = vh - leaf.offsetTop + 40;
+      return leaf.animate([
+        { transform: `translate(0px, 0px) rotate(${leaf.dataset.r}deg)`, opacity: 1 },
+        { transform: `translate(${dx * .4}px, ${fall * .2}px) rotate(160deg)`, opacity: 1, offset: .3 },
+        { transform: `translate(${dx}px, ${fall}px) rotate(${400 + Math.random() * 300}deg)`, opacity: .8 },
+      ], { duration: 1600 + Math.random() * 900, delay: Math.random() * 400, easing: "ease-in", fill: "forwards" }).finished;
+    }));
+    leaves.forEach(leaf => leaf.remove());
+  }
+
+  const EVENTS = [friendSaysHi, squirrelHeist, leavesSpell];
+  let lastEvent = -1;
+  async function runEvent() {
+    let pick;
+    do pick = Math.floor(Math.random() * EVENTS.length); while (pick === lastEvent);
+    lastEvent = pick;
+    busy = true;
+    try { await EVENTS[pick](); } finally { busy = false; }
+  }
+  (function eventLoop(delay) {
+    setTimeout(async () => {
+      if ((on("events") || FLAGS.has("events")) && !still() && free() && !hog.classList.contains("away")) await runEvent();
+      eventLoop(FLAGS.has("events") ? 2500 : 50000 + Math.random() * 30000);
+    }, delay);
+  })(FLAGS.has("events") ? 1500 : 25000);
+
+  // ---------- jam tip signs ----------
+  const TIPS = [
+    "commit your work. then commit it again.",
+    "write a README so people know how to play",
+    "record a short gameplay clip for your submission",
+    "drink some water!",
+    "test your game on someone else's computer",
+    "scope down: a small finished game beats a big unfinished one",
+    "add a title screen. it instantly feels more real",
+    "sound effects make everything 10x juicier",
+    "stuck? take a 5 minute walk, then try again",
+    "ship early, update later: hack.club/hv",
+  ];
+  const tipSign = document.getElementById("tip-sign");
+  const tipText = tipSign.querySelector("p");
+  let tipIndex = Math.floor(Math.random() * TIPS.length);
+
+  async function showTip() {
+    tipText.textContent = TIPS[tipIndex];
+    tipIndex = (tipIndex + 1) % TIPS.length;
+    const fromBelow = matchMedia("(max-width: 520px)").matches;
+    const hidden = fromBelow ? "translateY(calc(100% + 20vh)) rotate(0deg)" : "translateY(calc(-100% - 140px)) rotate(0deg)";
+    tipSign.style.visibility = "visible";
+    await tipSign.animate([
+      { transform: hidden },
+      { transform: "translateY(0) rotate(7deg)", offset: .55 },
+      { transform: "translateY(0) rotate(-4deg)", offset: .75 },
+      { transform: "translateY(0) rotate(2deg)", offset: .9 },
+      { transform: "translateY(0) rotate(0deg)" },
+    ], { duration: 1500, easing: "ease-out" }).finished;
+    const sway = tipSign.animate([{ transform: "rotate(-1.5deg)" }, { transform: "rotate(1.5deg)" }],
+      { duration: 2400, iterations: Infinity, direction: "alternate", easing: "ease-in-out" });
+    await sleep(15000);
+    sway.cancel();
+    await tipSign.animate([{ transform: "translateY(0) rotate(0deg)" }, { transform: hidden }],
+      { duration: 700, easing: "ease-in" }).finished;
+    tipSign.style.visibility = "hidden";
+  }
+  (function tipLoop(delay) {
+    setTimeout(async () => {
+      if ((on("tips") || FLAGS.has("tips")) && !still() && !bossPending) await showTip();
+      tipLoop(FLAGS.has("tips") ? 3000 : 150000 + Math.random() * 60000);
+    }, delay);
+  })(FLAGS.has("tips") ? 1000 : 40000);
+
+  // ---------- clap meter: louder room = bigger reactions ----------
+  const clapBtn = document.getElementById("clap-toggle");
+  const meter = document.getElementById("clap-meter");
+  const meterFill = meter.querySelector(".fill");
+  const meterPeak = meter.querySelector(".peak");
+  const meterWord = meter.querySelector(".word");
+  const timerEl = document.querySelector("#submission .timer");
+  const logoEl = document.querySelector(".logo");
+  const hypeLayer = document.getElementById("hype-layer");
+  const root = document.documentElement;
+  const simulate = FLAGS.has("hype");
+  let audio = null;          // { stream, ctx, analyser, buf }
+  let floorDb = -60;         // rolling estimate of the room's quiet level
+  let hype = 0, peak = 0, peakAt = 0;
+  let lastFlip = 0, lastMega = 0, lastLeaf = 0;
+  let running = false;
+
+  function readLevel(now) {
+    if (simulate) {
+      // fake crowd: slow swell with sharp clap spikes, for previewing with #hype
+      const swell = (Math.sin(now / 2600) + 1) / 2;
+      const clap = Math.max(0, Math.sin(now / 170)) ** 12 * swell;
+      return Math.min(1, swell * .75 + clap * .5);
+    }
+    audio.analyser.getFloatTimeDomainData(audio.buf);
+    let sum = 0;
+    for (const v of audio.buf) sum += v * v;
+    const db = 20 * Math.log10(Math.sqrt(sum / audio.buf.length) + 1e-8);
+    // floor drops instantly to quieter readings, creeps up slowly so cheering doesn't raise it
+    floorDb = db < floorDb ? db : floorDb + (db - floorDb) * .0008;
+    return Math.min(1, Math.max(0, (db - floorDb - 6) / 30));
+  }
+
+  function burstLeaf(strength) {
+    const leaf = document.createElement("div");
+    leaf.className = "hype-leaf";
+    leaf.style.background = leafColors[Math.floor(Math.random() * leafColors.length)];
+    leaf.style.left = Math.random() * 100 + "vw";
+    hypeLayer.appendChild(leaf);
+    leaf.animate([
+      { transform: "translate(0, -40px) rotate(0deg)" },
+      { transform: `translate(${(Math.random() - .5) * 200}px, ${innerHeight + 80}px) rotate(${720 * strength}deg)` },
+    ], { duration: 2400 - strength * 1200, easing: "ease-in" }).finished.then(() => leaf.remove());
+  }
+
+  function megaHype() {
+    const pop = spawn(hypeLayer, "hype-pop", ["HYPE!", "LOUDER!", "YEAAAH!", "SHIP IT!"][Math.floor(Math.random() * 4)]);
+    pop.style.left = 20 + Math.random() * 60 + "%";
+    pop.style.top = 20 + Math.random() * 50 + "%";
+    pop.animate([
+      { transform: "translate(-50%, -50%) scale(0) rotate(-20deg)", opacity: 1 },
+      { transform: "translate(-50%, -50%) scale(1.3) rotate(6deg)", opacity: 1, offset: .25 },
+      { transform: "translate(-50%, -50%) scale(1) rotate(-3deg)", opacity: 1, offset: .6 },
+      { transform: "translate(-50%, -50%) scale(1.6) rotate(0deg)", opacity: 0 },
+    ], { duration: 1400, easing: "ease-out" }).finished.then(() => pop.remove());
+    shakeScreen(hypeLayer, 18, 700);
+    for (let i = 0; i < 40; i++) {
+      const bit = spawn(hypeLayer, "boss-confetti", "", innerWidth * Math.random(), innerHeight + 10);
+      bit.style.background = leafColors[i % leafColors.length];
+      const vx = (Math.random() - .5) * 300, vy = -(.5 + Math.random() * .6) * innerHeight, g = innerHeight * 1.3;
+      bit.animate(Array.from({ length: 9 }, (_, k) => {
+        const t = k / 8;
+        return { transform: `translate(${vx * t}px, ${vy * t + g * t * t * .5}px) rotate(${t * 800}deg)` };
+      }), { duration: 1800 + Math.random() * 600, easing: "linear" }).finished.then(() => bit.remove());
+    }
+    if (free() && !hog.classList.contains("away")) flip({ duration: 1700, height: 160, turns: 3 });
+  }
+
+  function tick(now) {
+    if (!running) return;
+    const level = readLevel(now);
+    // fast attack, slow release so claps punch and cheering holds
+    hype += (level - hype) * (level > hype ? .45 : .05);
+    if (level > peak || now - peakAt > 1500) { peak = level; peakAt = now; }
+
+    root.style.setProperty("--hype", hype.toFixed(3));
+    meterFill.style.height = hype * 100 + "%";
+    meterPeak.style.bottom = peak * 100 + "%";
+    meterWord.textContent = hype > .82 ? "MAX HYPE!!" : hype > .55 ? "LOUDER!" : hype > .25 ? "nice!" : "make noise!";
+    meter.dataset.tier = hype > .82 ? 3 : hype > .55 ? 2 : hype > .25 ? 1 : 0;
+
+    if (!still()) {
+      const jolt = hype * hype * 16;
+      const rand = () => (Math.random() - .5) * 2;
+      timerEl.style.transform = hype > .02
+        ? `translate(${rand() * jolt}px, ${rand() * jolt}px) rotate(${rand() * hype * 4}deg) scale(${1 + hype * .35})`
+        : "";
+      logoEl.style.transform = hype > .02 ? `scale(${1 + hype * .25}) rotate(${rand() * hype * 5}deg)` : "";
+
+      if (hype > .4 && now - lastLeaf > 380 - hype * 340) { burstLeaf(hype); lastLeaf = now; }
+      if (hype > .4 && now - lastFlip > 1400 - hype * 500 && free() && !hog.classList.contains("away")) {
+        flip({ duration: 1000 - hype * 250, height: 90 + hype * 90 });
+        lastFlip = now;
+      }
+      if (hype > .82 && now - lastMega > 3500) { megaHype(); lastMega = now; lastFlip = now + 1200; }
+    }
+    requestAnimationFrame(tick);
+  }
+
+  async function startClap() {
+    if (!simulate) {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
+      const ctx = new AudioContext();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      audio = { stream, ctx, analyser, buf: new Float32Array(analyser.fftSize) };
+      floorDb = -60;
+      if (ctx.state === "suspended") {
+        // browsers only allow audio after a click; resume on the next one
+        document.addEventListener("pointerdown", () => ctx.resume(), { once: true });
+        await ctx.resume().catch(() => {});
+      }
+    }
+    running = true;
+    document.body.classList.add("clap-on");
+    if (!simulate) try { localStorage.setItem("clap", "on"); } catch {}
+    requestAnimationFrame(tick);
+  }
+
+  function stopClap() {
+    running = false;
+    if (audio) {
+      audio.stream.getTracks().forEach(t => t.stop());
+      audio.ctx.close();
+      audio = null;
+    }
+    hype = 0;
+    root.style.setProperty("--hype", 0);
+    timerEl.style.transform = "";
+    logoEl.style.transform = "";
+    document.body.classList.remove("clap-on");
+    if (!simulate) try { localStorage.setItem("clap", "off"); } catch {}
+  }
+
+  async function toggleClap(auto = false) {
+    if (running) return stopClap();
+    clapBtn.disabled = true;
+    try {
+      await startClap();
+    } catch (err) {
+      // an auto-start from last visit can fail quietly; a click should explain
+      if (!auto) clapBtn.querySelector("span").textContent = "mic blocked :(";
+      console.warn("clap meter:", err);
+    } finally {
+      clapBtn.disabled = false;
+    }
+  }
+  clapBtn.addEventListener("click", () => toggleClap());
+  meter.addEventListener("click", () => toggleClap());
+
+  let wasOn = false;
+  try { wasOn = localStorage.getItem("clap") === "on"; } catch {}
+  if (simulate || (wasOn && on("clap"))) toggleClap(true);
+</script>
+<script src="stream.js"></script>
+</body>
+</html>
